@@ -895,7 +895,7 @@ function render() {
   drawBossProjs();
   drawHazards();
   for (const p of parts) if (p.k === 'trail') { ctx.globalAlpha = 0.35 * (1 - p.t / p.life); drawHero(ctx, hero, p.x, p.y, p.f, { t: 0, air: true }, null); ctx.globalAlpha = 1; }
-  if (!forklift.mounted && !(player.inv > 0 && Math.floor(gameTime * 20) % 2)) drawHero(ctx, hero, player.x, player.y, player.facing, { t: player.t, run: player.run, moving: player.moving, air: !player.onGround, squash: player.squash, stretch: player.stretch }, nearestLight(player.x, player.y - 30, night));
+  if (!forklift.mounted && !(player.inv > 0 && player.inv < 1.15 && Math.floor(gameTime * 20) % 2)) drawHero(ctx, hero, player.x, player.y, player.facing, { t: player.t, run: player.run, moving: player.moving, air: !player.onGround, squash: player.squash, stretch: player.stretch }, nearestLight(player.x, player.y - 30, night));
   renderCombatFront(night);
   drawStoryFront();
   // front particles
