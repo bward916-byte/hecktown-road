@@ -19,9 +19,9 @@
   @keyframes glow { 0%,100% { text-shadow: 0 2px 0 #7a3b2a, 0 10px 30px rgba(0,0,0,.5), 0 0 18px rgba(242,181,68,.25); } 50% { text-shadow: 0 2px 0 #7a3b2a, 0 10px 30px rgba(0,0,0,.5), 0 0 40px rgba(242,181,68,.6); } }
   #title .sub { margin:8px 0 0; font-size: clamp(13px, 2.4vmin, 20px); font-style: italic; color:#e6d7bd; opacity:.9; }
   #title .promise { margin: 6px 0 14px; font-size: clamp(11px, 2vmin, 15px); color:#b9c5d6; }
-  #grid { display:grid; grid-template-columns: repeat(7, auto); gap: 8px; justify-content:center; margin: 6px auto 0; }
-  @media (max-width: 760px) { #grid { grid-template-columns: repeat(7, auto); gap:5px; } }
-  .card { width: clamp(58px, 11vmin, 96px); background: rgba(255,255,255,.05); border: 1.5px solid rgba(242,181,68,.28); border-radius: 12px; padding: 6px 4px 5px; cursor:pointer; transition: transform .12s ease, border-color .12s ease, background .12s ease; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  #grid { display:grid; grid-template-columns: repeat(6, auto); gap: 8px; justify-content:center; margin: 6px auto 0; }
+  @media (max-width: 760px) { #grid { grid-template-columns: repeat(6, auto); gap:5px; } }
+  .card { width: clamp(62px, 12vmin, 100px); background: rgba(255,255,255,.05); border: 1.5px solid rgba(242,181,68,.28); border-radius: 12px; padding: 6px 4px 5px; cursor:pointer; transition: transform .12s ease, border-color .12s ease, background .12s ease; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
   .card:hover, .card:focus-visible { transform: translateY(-3px); border-color:#f2b544; background: rgba(242,181,68,.12); outline:none; }
   .card canvas { width: 100%; aspect-ratio: 1/1; display:block; border-radius: 8px; }
   .card .n { font-size: clamp(10px, 1.7vmin, 13px); font-weight: 700; margin-top: 4px; color:#f6ecd8; }
@@ -161,14 +161,14 @@ function syncInput() {
 /* ---------------- time of day & palette ---------------- */
 // keyframes: hour → { top, horizon, ambient(rgb 0..255), sun }
 const SKY = [
-  { h: 0,  top: hex('#0b1026'), hor: hex('#1a2646'), amb: [82, 92, 140], haze: hex('#1a2646') },
-  { h: 5,  top: hex('#1a1f3d'), hor: hex('#6d4a5c'), amb: [150, 125, 145], haze: hex('#6d4a5c') },
+  { h: 0,  top: hex('#101a38'), hor: hex('#243258'), amb: [152, 160, 200], haze: hex('#243258') },
+  { h: 5,  top: hex('#1f2648'), hor: hex('#7d5a6c'), amb: [170, 148, 165], haze: hex('#7d5a6c') },
   { h: 7,  top: hex('#5f8fc4'), hor: hex('#f4c48a'), amb: [235, 225, 210], haze: hex('#f4c48a') },
   { h: 12, top: hex('#4d90d8'), hor: hex('#cfe6f7'), amb: [255, 255, 255], haze: hex('#cfe6f7') },
   { h: 17, top: hex('#3a6ea5'), hor: hex('#f2b544'), amb: [255, 242, 218], haze: hex('#f2b544') },
-  { h: 19, top: hex('#2a2f5c'), hor: hex('#e0684a'), amb: [215, 172, 175], haze: hex('#e0684a') },
-  { h: 21, top: hex('#0e1430'), hor: hex('#2a3556'), amb: [92, 102, 150], haze: hex('#2a3556') },
-  { h: 24, top: hex('#0b1026'), hor: hex('#1a2646'), amb: [82, 92, 140], haze: hex('#1a2646') },
+  { h: 19, top: hex('#2a2f5c'), hor: hex('#e0684a'), amb: [228, 190, 190], haze: hex('#e0684a') },
+  { h: 21, top: hex('#141d3e'), hor: hex('#324066'), amb: [156, 164, 204], haze: hex('#324066') },
+  { h: 24, top: hex('#101a38'), hor: hex('#243258'), amb: [152, 160, 200], haze: hex('#243258') },
 ];
 function skyAt(hour) {
   hour = ((hour % 24) + 24) % 24;
@@ -194,7 +194,6 @@ const ROSTER = [
   { name: 'Greg', role: 'BI Wizard', perk: 'Dashboard', skin: '#f1c9a5', hair: '#a8632c', style: 'wavy', shirt: '#6b5b8f', pants: '#2b2f3a', acc: 'cardigan' },
   { name: 'Ryan', role: 'Dev Manager', perk: 'Sprint', skin: '#e4b58f', hair: '#2a1e18', style: 'short', shirt: '#c25a3a', pants: '#26293a', acc: 'backpack' },
   { name: 'Jose', role: 'System Architect', perk: 'Blueprint', skin: '#c9906a', hair: '#1a1410', style: 'swept', shirt: '#2f7f8f', pants: '#2b2f3a', acc: 'plans' },
-  { name: 'Jose Veliz', role: 'Analyst', perk: 'Pivot', skin: '#d9a77c', hair: '#2a1e18', style: 'short', shirt: '#3f7a5a', pants: '#2b2f3a', acc: 'tablet' },
   { name: 'Ashwini', role: 'Salesforce Engineer', perk: 'Flow', skin: '#c48a62', hair: '#1a1410', style: 'bun', shirt: '#4a6fd8', pants: '#26293a', acc: 'cloud' },
 ];
 
@@ -915,9 +914,10 @@ function render() {
   lctx.fillStyle = rgb(sk.amb); lctx.fillRect(0, 0, W, H);
   if (night > 0.05) {
     lctx.globalCompositeOperation = 'lighter';
+    { const mA = ((hour + 6) % 24 / 12) * Math.PI; const mx = W * 0.5 - Math.cos(mA) * W * 0.5 - cx * 0.03, my = H * 0.6 - Math.sin(mA) * H * 0.5; const mg = lctx.createRadialGradient(mx, my, 40, mx, my, 900); mg.addColorStop(0, rgba([120, 140, 200], night * 0.35)); mg.addColorStop(1, 'rgba(0,0,0,0)'); lctx.fillStyle = mg; lctx.fillRect(0, 0, W, H); }
     for (const L of LIGHTS) {
       const lx = L.x - cx, ly = L.y - cy; if (lx < -L.r || lx > W + L.r) continue;
-      const gr = lctx.createRadialGradient(lx, ly, 0, lx, ly, L.r); const a = night * 0.95 * (L.x === 2910 ? (0.7 + 0.3 * Math.sin(gameTime * 30)) : 1);
+      const gr = lctx.createRadialGradient(lx, ly, 0, lx, ly, L.r * 1.25); const a = night * 0.95 * (L.x === 2910 ? (0.7 + 0.3 * Math.sin(gameTime * 30)) : 1);
       gr.addColorStop(0, rgba(L.color, a)); gr.addColorStop(0.3, rgba(L.color, a * 0.8)); gr.addColorStop(0.65, rgba(L.color, a * 0.3)); gr.addColorStop(1, rgba(L.color, 0));
       lctx.fillStyle = gr; lctx.fillRect(lx - L.r, ly - L.r, L.r * 2, L.r * 2);
     }
@@ -947,11 +947,11 @@ function render() {
   if (hour > 5.5 && hour < 18.8) { const low = 1 - Math.abs(Math.sin(sunA)); const sg2 = ctx.createRadialGradient(sunX, sunY, 40, sunX, sunY, W * 0.9); sg2.addColorStop(0, rgba([255, 200, 120], 0.22 * low + 0.04)); sg2.addColorStop(1, 'rgba(255,200,120,0)'); ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.fillStyle = sg2; ctx.fillRect(0, 0, W, H); ctx.restore(); }
   // boss / hurt edge pulses
   if (arena.active && arena.boss && !arena.boss.dead) { const a = 0.10 + 0.06 * Math.sin(gameTime * 3); const bg = ctx.createRadialGradient(W / 2, H / 2, H * 0.45, W / 2, H / 2, H * 0.95); bg.addColorStop(0, 'rgba(0,0,0,0)'); bg.addColorStop(1, rgba([255, 90, 60], a)); ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H); }
-  if (player.inv > 0.7 && player.dead <= 0) { const a = (player.inv - 0.7) / 0.4 * 0.45; const hg = ctx.createRadialGradient(W / 2, H / 2, H * 0.4, W / 2, H / 2, H * 0.9); hg.addColorStop(0, 'rgba(0,0,0,0)'); hg.addColorStop(1, rgba([255, 60, 60], a)); ctx.fillStyle = hg; ctx.fillRect(0, 0, W, H); }
+  if (player.inv > 0.7 && player.inv <= 1.15 && player.dead <= 0) { const a = clamp((player.inv - 0.7) / 0.4, 0, 1) * 0.45; const hg = ctx.createRadialGradient(W / 2, H / 2, H * 0.4, W / 2, H / 2, H * 0.9); hg.addColorStop(0, 'rgba(0,0,0,0)'); hg.addColorStop(1, rgba([255, 60, 60], a)); ctx.fillStyle = hg; ctx.fillRect(0, 0, W, H); }
   // vignette
-  const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.5, W / 2, H / 2, H * 1.0); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(10,10,30,.28)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+  const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.5, W / 2, H / 2, H * 1.0); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(10,10,30,.20)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
   // color grade: warm highlights up top, cool shadows below
-  { ctx.save(); const cg = ctx.createLinearGradient(0, 0, 0, H); cg.addColorStop(0, 'rgba(255,205,150,.07)'); cg.addColorStop(0.5, 'rgba(255,205,150,0)'); cg.addColorStop(1, 'rgba(120,150,255,0)'); ctx.globalCompositeOperation = 'screen'; ctx.fillStyle = cg; ctx.fillRect(0, 0, W, H); const cm = ctx.createLinearGradient(0, H * 0.5, 0, H); cm.addColorStop(0, 'rgba(255,255,255,0)'); cm.addColorStop(1, 'rgba(210,222,255,.7)'); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = cm; ctx.fillRect(0, 0, W, H); ctx.restore(); }
+  { ctx.save(); const cg = ctx.createLinearGradient(0, 0, 0, H); cg.addColorStop(0, 'rgba(255,205,150,.07)'); cg.addColorStop(0.5, 'rgba(255,205,150,0)'); cg.addColorStop(1, 'rgba(120,150,255,0)'); ctx.globalCompositeOperation = 'screen'; ctx.fillStyle = cg; ctx.fillRect(0, 0, W, H); const cm = ctx.createLinearGradient(0, H * 0.5, 0, H); cm.addColorStop(0, 'rgba(255,255,255,0)'); cm.addColorStop(1, 'rgba(232,238,255,.35)'); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = cm; ctx.fillRect(0, 0, W, H); ctx.restore(); }
   // paper grain
   ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = 0.35; ctx.drawImage(LAYERS.grain, 0, 0); ctx.restore();
   drawSepia();
@@ -960,6 +960,7 @@ function render() {
   drawCrewHUD();
   drawForkliftHUD();
   drawLedgerHUD();
+  drawAudioHUD();
   drawEnding();
   drawDemoHUD();
   if (catnip.n > 0) { ctx.font = 'bold 11px system-ui, sans-serif'; ctx.fillStyle = 'rgba(16,26,46,.55)'; rr(ctx, 14, H - 110, 130, 24, 8); ctx.fill(); ctx.fillStyle = '#d8ff4a'; ctx.fillText('MEOWIJUANA ×' + catnip.n + '  ·  X', 24, H - 94); }
@@ -1256,7 +1257,6 @@ const WEAPONS = {
   'Greg':       { name: 'Dashboard Drones', kind: 'orbit',  cd: 0.55, dmg: 2, range: 380, speed: 620, drones: 2, color: [190, 120, 255] },
   'Ryan':       { name: 'Sprint Blades',   kind: 'blades',  cd: 0.18, dmg: 2, range: 52, color: [220, 225, 235] },
   'Jose':       { name: 'Blueprint Turret', kind: 'turret', cd: 4.5, dmg: 2, range: 360, life: 6, fireCd: 0.32, color: [90, 160, 255] },
-  'Jose Veliz': { name: 'Pivot Table',     kind: 'trap',    cd: 3.2, dmg: 1, range: 320, life: 3.2, color: [130, 220, 120] },
   'Ashwini':    { name: 'Apex Trigger',    kind: 'trigger', cd: 0.22, dmg: 4, range: 230, color: [110, 170, 255] },
 };
 function weaponOf(h) { return WEAPONS[h.name]; }
@@ -2696,11 +2696,11 @@ WORLD_DEFS.merge = makeDC({
   id: 'merge', name: 'The Merge', location: 'Central Pet legacy DC — systems mid-migration', weather: 1, hour: 2.5, hours: 8, miles: 420,
   far: bakeEastonFar, boss: 'golem', bossName: 'SCHEMA GOLEM',
   art: { ground: ['#6f8f4a', '#5c7a3c', '#6b5a44', '#3f3529'], grass: '#7fa354', office: ['#c8c0b0', '#9a9284'], wall: ['#b8c0c8', '#8a929a'], trim: '#5e6870', rock: '#5a6a44', sign: 'MERGE  ·  CENTRAL + PHILLIPS', road: 'LEGACY DC  ·  MERGE', before: (g, gy) => drawMerge(g, gy), after: () => {} },
-  npc: { name: 'Wei', role: 'Data Migration' }, lines: ['Wei: "Two data models, one warehouse, and a thing made of both schemas walking the floor. Only people who speak both can hurt it — EDI, Salesforce, iSeries, or the Analyst."'],
+  npc: { name: 'Wei', role: 'Data Migration' }, lines: ['Wei: "Two data models, one warehouse, and a thing made of both schemas walking the floor. Only people who speak both can hurt it — EDI, Salesforce, iSeries, or the Architect."'],
   steps: [{ type: 'scan', name: 'Map the fields: scan in posted order', time: 34, n: 3, ordered: true }, { type: 'valves', name: 'Cut over: switch the feeds in order', time: 40, n: 3 }, { type: 'boss', name: 'Boss' }],
   hazard: 'none', encounter: ['packet', 'packet', 'ghost'],
 });
-WORLD_DEFS.merge.door.roles = ['Umesh', 'Ashwini', 'Dave', 'Jose Veliz']; WORLD_DEFS.merge.door.rolesNeeded = 2;
+WORLD_DEFS.merge.door.roles = ['Umesh', 'Ashwini', 'Dave', 'Jose']; WORLD_DEFS.merge.door.rolesNeeded = 2;
 const ACT3 = ['sacramento', 'aurora'];
 WORLD_DEFS.easton.driveOptions = () => [{ label: 'Taunton, MA', to: 'taunton' }].concat(restored.taunton ? [{ label: 'Spartanburg, SC', to: 'spartanburg' }] : []).concat(restored.spartanburg ? ACT2.map(id => ({ label: WORLD_DEFS[id].name + (restored[id] ? ' ✓' : ''), to: id })) : []).concat(ACT2.every(id => restored[id]) ? ACT3.map(id => ({ label: WORLD_DEFS[id].name + (restored[id] ? ' ✓' : ''), to: id })) : []).concat(ACT3.every(id => restored[id]) ? [{ label: 'The Merge' + (restored.merge ? ' ✓' : ''), to: 'merge' }] : []);
 
@@ -2927,7 +2927,9 @@ function audioInit() {
     audio.master = audio.ctx.createGain(); audio.master.gain.value = 0.5; audio.master.connect(audio.ctx.destination);
     audio.padGain = audio.ctx.createGain(); audio.padGain.gain.value = 0; audio.padGain.connect(audio.master);
     const lp = audio.ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 600; lp.connect(audio.padGain);
-    audio.pad = []; for (const f of [55, 82.4, 110, 164.8]) { const o = audio.ctx.createOscillator(); o.type = f < 100 ? 'sawtooth' : 'triangle'; o.frequency.value = f; const g = audio.ctx.createGain(); g.gain.value = 0.06; o.connect(g); g.connect(lp); o.start(); audio.pad.push({ o, g, base: f }); }
+    // soft, slow pad: sine chord tones with a slow shimmer, no sawtooth drone
+    audio.pad = []; for (const f of [110, 164.8, 220, 277.2, 329.6]) { const o = audio.ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f; const g = audio.ctx.createGain(); g.gain.value = 0.035; const lfo = audio.ctx.createOscillator(); lfo.frequency.value = 0.05 + Math.random() * 0.08; const lg = audio.ctx.createGain(); lg.gain.value = 0.02; lfo.connect(lg); lg.connect(g.gain); lfo.start(); o.connect(g); g.connect(lp); o.start(); audio.pad.push({ o, g, base: f }); }
+    lp.frequency.value = 900;
     // wind/rain noise bed
     const buf = audio.ctx.createBuffer(1, audio.ctx.sampleRate * 2, audio.ctx.sampleRate); const d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.3;
     const src = audio.ctx.createBufferSource(); src.buffer = buf; src.loop = true; const nf = audio.ctx.createBiquadFilter(); nf.type = 'bandpass'; nf.frequency.value = 900; nf.Q.value = 0.5; audio.noise = audio.ctx.createGain(); audio.noise.gain.value = 0; src.connect(nf); nf.connect(audio.noise); audio.noise.connect(audio.master); src.start();
@@ -2936,14 +2938,17 @@ function audioInit() {
 }
 function audioTick() {
   if (!audio.started || !audio.ctx) return;
-  const t = audio.ctx.currentTime; const want = audio.on && running && mode !== 'drive' ? 0.9 : audio.on && mode === 'drive' ? 0.6 : 0;
-  audio.padGain.gain.setTargetAtTime(want, t, 0.8);
-  const noiseWant = audio.on ? (weather === 2 ? 0.35 : weather === 3 ? 0.08 : weather === 1 ? 0.12 : 0.04) + (hazard.wind ? 0.3 : 0) + (mode === 'drive' ? 0.25 : 0) : 0;
-  audio.noise.gain.setTargetAtTime(noiseWant, t, 0.6);
-  audio.lp.frequency.setTargetAtTime(stage.active ? 1400 : 600, t, 1.2);
+  const t = audio.ctx.currentTime; const want = !audio.on || !running ? 0 : mode === 'drive' ? 0.35 : stage.active ? 0.55 : 0.45;
+  audio.padGain.gain.setTargetAtTime(want, t, 1.5);
+  const noiseWant = audio.on ? (weather === 2 ? 0.22 : weather === 3 ? 0.05 : weather === 1 ? 0.06 : 0) + (hazard.wind ? 0.2 : 0) + (mode === 'drive' ? 0.14 : 0) : 0;
+  audio.noise.gain.setTargetAtTime(noiseWant, t, 0.8);
+  audio.lp.frequency.setTargetAtTime(stage.active ? 1600 : 900, t, 1.2);
+  // slow chord drift so it never sits on one hum
+  const bar = Math.floor(gameTime / 12) % 4; const chord = [[0, 0, 0, 0, 0], [0, 0, 0, 2, 0], [-2, 0, -2, 0, 3], [0, 3, 0, 2, 0]][bar];
+  audio.pad.forEach((p, i) => p.o.frequency.setTargetAtTime(p.base * Math.pow(2, chord[i] / 12), t, 2.5));
   // world flavor: detune the pad by region
   const det = ({ taunton: -2, spartanburg: 3, plantcity: 5, lansing: -5, billings: 7, portland: -3, sacramento: 4, aurora: 0, merge: -7, prologue: -12, show: 5 })[WORLD.id] || 0;
-  for (const p of audio.pad) p.o.detune.setTargetAtTime(det * 100 / 12 * 12, t, 2);
+  for (const p of audio.pad) p.o.detune.setTargetAtTime(det * 100, t, 2);
 }
 function sfx(name) {
   if (!audio.started || !audio.on || !audio.ctx) return;
@@ -2968,6 +2973,7 @@ window.addEventListener('keydown', e => { audioInit(); if (audio.ctx && audio.ct
 window.addEventListener('touchstart', () => { audioInit(); if (audio.ctx && audio.ctx.state === 'suspended') audio.ctx.resume(); }, { passive: true });
 window.addEventListener('pointerdown', () => { audioInit(); if (audio.ctx && audio.ctx.state === 'suspended') audio.ctx.resume(); });
 
+function drawAudioHUD() { const x = W - 46, y = 76, w = 32, h = 22; if (ledger.found.size) return; ctx.fillStyle = 'rgba(16,26,46,.55)'; rr(ctx, x, y, w, h, 6); ctx.fill(); ctx.fillStyle = audio.on ? '#f6ecd8' : 'rgba(246,236,216,.4)'; ctx.font = 'bold 12px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(audio.on ? '♪' : '♪̸', x + w / 2, y + 16); ctx.textAlign = 'left'; uiTaps.push({ x: x - 8, y: y - 8, w: w + 16, h: h + 16, fn: () => { audio.on = !audio.on; banner(audio.on ? 'Sound on' : 'Sound off', 1); } }); }
 /* ---------- Ledger pages ---------- */
 const LEDGER = [
   ['1938', 'A single feed store on a county road. One counter, one scale, one promise.'],
@@ -3100,43 +3106,71 @@ const _driveOptsEaston = WORLD_DEFS.easton.driveOptions;
 WORLD_DEFS.easton.driveOptions = () => _driveOptsEaston().concat(story.ending ? [{ label: 'The Buying Show', to: 'show' }] : []);
 WORLD_DEFS.show.driveTo = 'easton'; WORLD_DEFS.show.driveLabel = 'BACK TO EASTON'; WORLD_DEFS.show.driveHours = 2; WORLD_DEFS.show.driveRequires = () => null; WORLD_DEFS.show.miles = 60; WORLD_DEFS.show.truckX = 3540;
 
-/* ---------- attract-mode demo ---------- */
+/* ---------- attract-mode demo: a tour of every feature ---------- */
 const demo = { active: false, idx: 0, t: 0, caption: '', script: [] };
+function demoCrew(names) { crew.length = 0; for (const n of names) { const q = npcs.find(z => z.hero && z.hero.name === n); if (q) joinCrew(q.hero); } for (const m of crewAll()) SKILL[m.hero.name] = 6; }
+function demoBoss(type) { const d = WORLD.def.door; if (!d) return; stage.active = true; stage.door = d; stage.step = 2; stage.fails = 0; arena.active = true; arena.x0 = d.x0; arena.x1 = d.x1; arena.door = d; const b = spawnBoss(type, d.x1 - 160, groundYAt(d.x1 - 160)); arena.boss = b; if (b) b.tx = clamp(player.x + 320, d.x0 + 60, d.x1 - 60); player.x = d.x0 + 60; player.y = groundYAt(player.x); for (const f of crew) { f.x = player.x - 30; f.y = player.y; } }
 const DEMO_SCRIPT = [
-  { world: 'easton', x: 700, hour: 23.9, weather: 0, cap: 'Easton, Pennsylvania. 11:52 PM. The site goes live at midnight.', dur: 6, walk: 1 },
-  { world: 'easton', x: 1800, hour: 23.95, weather: 0, cap: 'Carry the order. Scan the pallets. Something is wrong in the server room.', dur: 6, walk: 1, y: 392 },
-  { world: 'taunton', x: 400, hour: 6.2, weather: 1, cap: 'Drive the network. Taunton, Massachusetts, in the fog.', dur: 6, walk: 1 },
-  { world: 'spartanburg', x: 2800, hour: 15, weather: 2, cap: 'Spartanburg. A storm, a forklift, and a cat with a business plan.', dur: 6, walk: 1, fight: ['flicker', 'jitter', 'packet'] },
-  { world: 'lansing', x: 500, hour: 8.5, weather: 3, cap: 'Crews are three. Skills are earned. Bosses restart the stage.', dur: 6, walk: 1 },
-  { world: 'billings', x: 2900, hour: 16.5, weather: 0, cap: 'Nine distribution centers. One promise.', dur: 6, walk: 1, fight: ['flicker', 'flicker', 'ghost'] },
-  { world: 'easton', x: 1900, hour: 23.98, weather: 0, cap: 'HECKTOWN ROAD  ·  press any key to play', dur: 7, walk: 0, y: 392 },
+  { world: 'prologue', x: 200, hour: 15.5, weather: 0, cap: '1938. A feed store on a county road, and one promise.', dur: 7, walk: 1 },
+  { world: 'easton', x: 700, hour: 23.9, weather: 0, cap: 'Easton, PA. 11:52 PM. The new site goes live at midnight.', dur: 6, walk: 1, setup: () => { story.weaponsOnline = false; } },
+  { world: 'easton', x: 1430, hour: 23.92, weather: 0, cap: 'Carry the order to the dock. Scan the tagged pallets.', dur: 7, walk: 1, setup: () => { story.weaponsOnline = false; const pk = spawnPackage(1470, 412, 'BAY 2'); pk.carried = true; player.carry = pk; } },
+  { world: 'easton', x: 950, hour: 23.95, weather: 0, cap: 'The batch job wakes up. Your weapon comes online.', dur: 7, walk: 0, setup: () => { spawnGroup(990, ['flicker', 'flicker', 'flicker', 'jitter']); banner(weaponOf(hero).name + ' online', 3); } },
+  { world: 'easton', x: 250, hour: 23.96, weather: 0, cap: 'Meet your teammates at work. Crews are three.', dur: 6, walk: 0, setup: () => { const q = npcs.find(z => z.hero); if (q) { player.x = q.x - 40; say(q, q.hero.name + ': "Crew\'s forming? Count me in."'); setTimeout(() => {}, 0); } demoCrew(['Aaron', 'Greg']); } },
+  { world: 'easton', x: 2600, hour: 23.97, weather: 0, cap: 'Twelve auto-fire weapons. Teammates fight on their own.', dur: 8, walk: 1, setup: () => { demoCrew(['Brian W', 'John']); }, fight: ['flicker', 'jitter', 'packet', 'lag', 'firewall', 'ghost'] },
+  { world: 'easton', x: WORLD_DEFS.easton.truckX + 450, hour: 23.98, weather: 0, cap: 'Drive the network in the Phillips truck. Hop potholes, honk at Static.', dur: 9, walk: 0, setup: () => { demoCrew(['Umesh', 'Dave']); startDrive('taunton'); } },
+  { world: 'taunton', x: 300, hour: 6.2, weather: 1, cap: 'Taunton, MA in the fog. Every DC is a boss stage: challenges, then the boss.', dur: 6, walk: 1, setup: () => demoCrew(['Umesh', 'Dave']) },
+  { world: 'taunton', x: 2500, hour: 6.4, weather: 1, cap: 'The Fog Server hides in the fog, tells, and lunges. Fail, and the stage restarts.', dur: 10, walk: 0, setup: () => { demoCrew(['Umesh', 'Dave']); demoBoss('fogserver'); } },
+  { world: 'spartanburg', x: 1580, hour: 15, weather: 2, cap: 'Spartanburg, SC. Milo the alley cat sells Meowijuana.', dur: 6, walk: 0, setup: () => { demoCrew(['Ryan', 'Ashwini']); const m = npcs.find(n => n.cat); if (m) { player.x = m.x - 40; say(m, 'Milo: "Psst. You want the good stuff? Organic. Locally grown."'); } catnip.n = 2; } },
+  { world: 'spartanburg', x: 800, hour: 15.2, weather: 2, cap: 'Throw a bag and every cat in the county comes running. Biscuit is not amused.', dur: 7, walk: 0, setup: () => { demoCrew(['Ryan', 'Ashwini']); catnip.n = 1; spawnGroup(800, ['flicker', 'flicker', 'jitter', 'packet']); setTimeout(() => {}, 0); demo.throwAt = 1.2; } },
+  { world: 'spartanburg', x: 2380, hour: 15.4, weather: 2, cap: 'Hop on the forklift. Jump lifts the forks. Ram the Static.', dur: 8, walk: 1, setup: () => { demoCrew(['Ryan', 'Ashwini']); placeForklift(2420); forklift.mounted = true; spawnGroup(2700, ['flicker', 'lag', 'packet']); } },
+  { world: 'spartanburg', x: 2700, hour: 15.6, weather: 2, cap: 'The Peach Pit: a stretch-wrap turntable that throws peaches and rolls.', dur: 9, walk: 0, setup: () => { demoCrew(['Ryan', 'Ashwini']); demoBoss('peachpit'); } },
+  { world: 'plantcity', x: 600, hour: 19.6, weather: 0, cap: 'Plant City, FL. Valve puzzles, rising water, and the Drainpipe heads.', dur: 8, walk: 0, setup: () => { demoCrew(['Bret', 'Greg']); demoBoss('drainpipe'); } },
+  { world: 'lansing', x: 600, hour: 8.5, weather: 3, cap: 'Lansing, MI. Ice underfoot and a runaway snowplow.', dur: 8, walk: 0, setup: () => { demoCrew(['Bret', 'Greg']); demoBoss('snowdrift'); } },
+  { world: 'billings', x: 600, hour: 16.5, weather: 0, cap: 'Billings, MT. Wind gusts shove you off ledges. Gale only falls when its blades stall.', dur: 8, walk: 0, setup: () => { demoCrew(['Aaron', 'John']); demoBoss('gale'); } },
+  { world: 'portland', x: 600, hour: 11.2, weather: 2, cap: 'Portland, OR. Belts drag you toward the Conveyor Hydra.', dur: 8, walk: 0, setup: () => { demoCrew(['Aaron', 'John']); demoBoss('hydra'); } },
+  { world: 'sacramento', x: 2700, hour: 18.9, weather: 0, cap: 'West Sacramento, CA. Walk the shelter dogs to Grace. Then the Crane drops containers.', dur: 9, walk: 1, setup: () => { demoCrew(['Rianan', 'Umesh']); stage.active = true; arena.active = true; arena.x0 = 2680; arena.x1 = 3500; stage.door = WORLD.def.door; stage.step = 0; spawnAnimals(2740, 4); const g = npcs.find(n => !n.hero && !n.cat); if (g) { g.x = 3440; g.y = 440; } } },
+  { world: 'aurora', x: 2700, hour: 5.4, weather: 3, cap: 'Aurora, CO. The brand-new DC. Hold the go-live gate for 55 seconds.', dur: 9, walk: 0, setup: () => { demoCrew(['Dave', 'Ashwini']); demoBoss('gate'); } },
+  { world: 'merge', x: 2700, hour: 2.5, weather: 1, cap: 'The Merge: the Central Pet legacy DC. Only Umesh, Ashwini, Dave or Jose can hurt the Schema Golem.', dur: 9, walk: 0, setup: () => { demoCrew(['Umesh', 'Ashwini']); demoBoss('golem'); } },
+  { world: 'easton', x: 1720, hour: 23.99, weather: 0, cap: 'Easton, 11:59. The Cutover Key opens the home warehouse. Everyone joins.', dur: 12, walk: 0, setup: () => { demoCrew(['Brian S', 'Jose']); story.cutoverKey = true; WORLD_DEFS.easton.door = EASTON_DOOR; demoBoss('queen'); finale.active = true; finale.everyone.length = 0; for (const n of npcs.slice()) { if (!n.hero) continue; finale.everyone.push({ hero: n.hero, x: 1760 + finale.everyone.length * 40, y: 392, vx: 0, vy: 0, w: 22, h: 52, facing: 1, onGround: true, wall: 0, run: 0, t: rnd(0, 5), moving: false, wcd: rnd(0, 0.8), state: 'idle', wander: 0, extra: true }); npcs.splice(npcs.indexOf(n), 1); } } },
+  { world: 'easton', x: 1900, hour: 0.05, weather: 0, cap: 'GO LIVE — OK. Skills earned, Ledger pages found, and the Buying Show to celebrate.', dur: 10, walk: 0, y: 392, setup: () => { startEnding(); ledger.found.add(0); ledger.found.add(1); } },
+  { world: 'show', x: 900, hour: 10, weather: 0, cap: 'HECKTOWN ROAD  ·  press any key or tap to play', dur: 9, walk: 1, setup: () => demoCrew(['Rianan', 'Greg']) },
 ];
 function startDemo() {
   hero = ROSTER[0]; player.hero = hero; crew.length = 0; story.turnDone = true; story.weaponsOnline = true;
-  for (const id of Object.keys(restored)) restored[id] = true; restored.easton = false; story.cutoverKey = false;
-  document.getElementById('title').classList.add('hidden'); running = true; last = 0; restoredBanner.t = 0; ledger.flash = 0;
+  for (const id of Object.keys(restored)) restored[id] = true; restored.easton = false; story.cutoverKey = false; catnip.n = 0;
+  document.getElementById('title').classList.add('hidden'); running = true; last = 0; restoredBanner.t = 0; ledger.flash = 0; ending.active = false;
   demo.active = true; demo.idx = -1; demo.t = 0; demoNext();
 }
 function demoNext() {
-  demo.idx = (demo.idx + 1) % DEMO_SCRIPT.length; const s = DEMO_SCRIPT[demo.idx]; demo.t = 0; demo.caption = s.cap;
-  loadWorld(s.world, { x: s.x, y: s.y || 440 }); hour = s.hour; timeAuto = false; weather = s.weather; setObjectives([]); WORLD_DEFS.easton.door = null;
-  if (s.world === 'easton') { for (const n of ['Aaron', 'Greg']) { const q = npcs.find(z => z.hero && z.hero.name === n); if (q) joinCrew(q.hero); } }
+  demo.idx = (demo.idx + 1) % DEMO_SCRIPT.length; const s = DEMO_SCRIPT[demo.idx]; demo.t = 0; demo.caption = s.cap; demo.throwAt = 0;
+  ending.active = false; finale.active = false; finale.everyone.length = 0; catnip.active = 0; restoredBanner.t = 0; packUI.banner = 0; ledger.flash = 0;
+  hero = ROSTER[0]; player.hero = hero; crew.length = 0;
+  WORLD_DEFS.easton.door = null; story.cutoverKey = false; restored.easton = false;
+  story.turnDone = true; story.weaponsOnline = true;
+  loadWorld(s.world, { x: s.x, y: s.y || 440 }); hour = s.hour; timeAuto = false; weather = s.weather; setObjectives([]); talk.open = false; restoredBanner.t = 0;
+  if (s.setup) s.setup();
   if (s.fight) spawnGroup(s.x + 200, s.fight);
-  player.inv = 99;
+  player.inv = 99; player.hp = 3;
 }
 function updateDemo(dt) {
   if (!demo.active) return;
   demo.t += dt; const s = DEMO_SCRIPT[demo.idx];
-  if (s.walk) { keys.ArrowRight = demo.t < s.dur - 1.5 && (Math.floor(demo.t) % 3 !== 2) ? 1 : 0; if (Math.floor(demo.t * 2) % 5 === 0 && player.onGround) keys.Space = 1; else keys.Space = 0; }
-  else { keys.ArrowRight = 0; }
+  for (const k in keys) keys[k] = 0;
+  if (mode === 'drive') { if (Math.floor(demo.t * 2) % 4 === 0) keys.Space = 1; if (Math.floor(demo.t) % 5 === 3) keys.ShiftLeft = 1; }
+  else if (forklift.mounted) { keys.ArrowRight = (Math.floor(demo.t / 2.5) % 2 === 0) ? 1 : 0; keys.ArrowLeft = keys.ArrowRight ? 0 : 1; if (Math.floor(demo.t * 2) % 6 === 0) keys.Space = 1; }
+  else if (s.walk) { keys.ArrowRight = demo.t < s.dur - 1.5 && (Math.floor(demo.t) % 3 !== 2) ? 1 : 0; if (Math.floor(demo.t * 2) % 5 === 0 && player.onGround) keys.Space = 1; }
+  else if (arena.active) { keys.ArrowRight = Math.sin(demo.t * 0.9) > 0 ? 1 : 0; keys.ArrowLeft = keys.ArrowRight ? 0 : 1; if (Math.floor(demo.t * 2) % 4 === 1 && player.onGround) keys.Space = 1; if (Math.floor(demo.t * 3) % 7 === 0) keys.ShiftLeft = 1; }
+  if (demo.throwAt && demo.t > demo.throwAt) { throwCatnip(); demo.throwAt = 0; }
+  if (talk.open && demo.t > 3.5) talk.open = false;
   player.inv = 99; player.hp = 3;
-  if (demo.t >= s.dur) demoNext();
+  if (mode === 'drive' && demo.t >= s.dur) { drive.t = drive.dur; }
+  if (demo.t >= s.dur + (mode === 'drive' ? 1 : 0)) demoNext();
 }
 function drawDemoHUD() {
   if (!demo.active) return;
-  ctx.fillStyle = 'rgba(16,26,46,.7)'; rr(ctx, W / 2 - 340, H - 150, 680, 44, 10); ctx.fill();
-  ctx.textAlign = 'center'; ctx.font = 'italic 16px Georgia, serif'; ctx.fillStyle = '#f6ecd8'; ctx.fillText(demo.caption, W / 2, H - 122); ctx.textAlign = 'right';
-  ctx.font = 'bold 11px system-ui, sans-serif'; ctx.fillStyle = 'rgba(242,181,68,.9)'; ctx.fillText('DEMO  ·  any key to play', W - 22, 112); ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(16,26,46,.7)'; rr(ctx, W / 2 - 400, H - 150, 800, 44, 10); ctx.fill();
+  ctx.textAlign = 'center'; ctx.font = 'italic 15px Georgia, serif'; ctx.fillStyle = '#f6ecd8'; ctx.fillText(demo.caption, W / 2, H - 122); ctx.textAlign = 'right';
+  ctx.font = 'bold 11px system-ui, sans-serif'; ctx.fillStyle = 'rgba(242,181,68,.9)'; ctx.fillText('DEMO ' + (demo.idx + 1) + '/' + DEMO_SCRIPT.length + '  ·  any key to play', W - 22, 112); ctx.textAlign = 'left';
 }
 function demoExit() { if (!demo.active) return; demo.active = false; location.reload(); }
 window.addEventListener('keydown', e => { if (demo.active && !['KeyM'].includes(e.code)) demoExit(); });
