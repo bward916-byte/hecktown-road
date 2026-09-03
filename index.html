@@ -90,6 +90,8 @@ const tk = { left: 0, right: 0, jump: 0, dash: 0, weather: 0, time: 0, use: 0, s
 const prev = { jump: 0, dash: 0, weather: 0, time: 0, use: 0, swap: 0, nip: 0 };
 const edge = { jump: 0, dash: 0, weather: 0, time: 0, use: 0, swap: 0, nip: 0 };
 let tapSwap = -2; // portrait tapped this frame (-2 none)
+const uiTaps = []; // {x,y,w,h,fn} registered each frame by HUD draws
+let pendingTaps = [];
 window.addEventListener('keydown', e => { keys[e.code] = 1; if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.code)) e.preventDefault(); });
 window.addEventListener('keyup', e => { keys[e.code] = 0; });
 window.addEventListener('blur', () => { for (const k in keys) keys[k] = 0; });
@@ -106,7 +108,7 @@ const BTN = [
 function tpos(t) { const r = canvas.getBoundingClientRect(); return { x: (t.clientX - r.left) / scale, y: (t.clientY - r.top) / scale }; }
 function onTouch(e) {
   e.preventDefault();
-  if (e.type === 'touchstart' && typeof packUI !== 'undefined') { for (const t of e.changedTouches) { const p = tpos(t); for (const r of packUI.rects) if (p.x >= r.x - 4 && p.x <= r.x + r.w + 4 && p.y >= r.y - 6 && p.y <= r.y + r.h + 6) tapSwap = r.i; } }
+  if (e.type === 'touchstart' && typeof packUI !== 'undefined') { for (const t of e.changedTouches) { const p = tpos(t); let hitUI = false; for (const r of uiTaps) if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) { pendingTaps.push(r.fn); hitUI = true; } if (hitUI) continue; for (const r of packUI.rects) if (p.x >= r.x - 4 && p.x <= r.x + r.w + 4 && p.y >= r.y - 6 && p.y <= r.y + r.h + 6) tapSwap = r.i; } }
   const active = {};
   let stickFound = false;
   for (const t of e.touches) {
@@ -131,6 +133,7 @@ canvas.addEventListener('touchmove', onTouch, { passive: false });
 canvas.addEventListener('touchend', onTouch, { passive: false });
 canvas.addEventListener('touchcancel', onTouch, { passive: false });
 
+function runTaps() { const t = pendingTaps; pendingTaps = []; for (const fn of t) fn(); }
 function syncInput() {
   const gp = (navigator.getGamepads && navigator.getGamepads()[0]) || null;
   let gx = 0, gjump = 0, gdash = 0;
@@ -738,7 +741,7 @@ function updateCamera(dt) {
 let gameTime = 0;
 function update(dt) {
   gameTime += dt;
-  syncInput();
+  syncInput(); runTaps();
   if (edge.weather) { weather = (weather + 1) % 4; flash = 2; }
   if (edge.time) { hour = Math.round(hour / 3) * 3 + 3; timeAuto = false; flash = 2; }
   if (timeAuto) hour += dt / 15; // one hour per 15 s
@@ -756,6 +759,7 @@ function update(dt) {
 
 /* ---------------- render ---------------- */
 function render() {
+  uiTaps.length = 0;
   if (mode === 'drive') { renderDrive(); return; }
   const sk = skyAt(hour), night = nightness(hour);
   const cx = camera.x, cy = camera.y;
@@ -1229,6 +1233,7 @@ function updateProjs(dt) {
   }
 }
 
+function drawCloseButton(fn) { const x = W - 64, y = 14, w = 50, h = 30; ctx.fillStyle = 'rgba(255,255,255,.08)'; rr(ctx, x, y, w, h, 8); ctx.fill(); ctx.strokeStyle = 'rgba(242,181,68,.6)'; ctx.lineWidth = 1.5; rr(ctx, x, y, w, h, 8); ctx.stroke(); ctx.fillStyle = '#f6ecd8'; ctx.font = 'bold 14px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('✕', x + w / 2, y + 20); uiTaps.push({ x: x - 10, y: y - 10, w: w + 20, h: h + 20, fn }); }
 /* ---------- coffee machine shop ---------- */
 const SHOP_ITEMS = [
   { id: 'heal', name: 'Refill', desc: 'Restore all signal', base: 15 },
@@ -1385,7 +1390,8 @@ function drawCombatHUD() {
   if (shop.open) {
     ctx.fillStyle = 'rgba(16,26,46,.72)'; ctx.fillRect(0, 0, W, H);
     ctx.textAlign = 'center'; ctx.font = 'bold 26px Georgia, serif'; ctx.fillStyle = '#f2b544'; ctx.fillText('BREAK ROOM', W / 2, 110);
-    ctx.font = '12px system-ui, sans-serif'; ctx.fillStyle = '#b9c5d6'; ctx.fillText('$' + bucks.n + ' in shards   ·   E buy   ·   Jump to leave', W / 2, 134);
+    drawCloseButton(() => { shop.open = false; });
+    ctx.font = '12px system-ui, sans-serif'; ctx.fillStyle = '#b9c5d6'; ctx.fillText('$' + bucks.n + ' in shards   ·   tap or E to buy   ·   ✕ or Jump to leave', W / 2, 134);
     ctx.fillStyle = '#f6ecd8'; ctx.font = 'bold 13px Georgia, serif'; ctx.fillText('Skills are earned on boss stages', W / 2, 360); ctx.font = '11px system-ui, sans-serif'; ctx.fillStyle = '#b9c5d6'; ctx.fillText(ROSTER.filter(r => skillOf(r)).map(r => r.name + ' L' + skillOf(r)).join('   ·   ') || 'No one has leveled yet', W / 2, 380);
     const cw = 190, gap = 16, x0 = W / 2 - (SHOP_ITEMS.length * cw + (SHOP_ITEMS.length - 1) * gap) / 2;
     SHOP_ITEMS.forEach((it, i) => {
@@ -1395,6 +1401,7 @@ function drawCombatHUD() {
       ctx.fillStyle = '#f6ecd8'; ctx.font = 'bold 16px Georgia, serif'; ctx.fillText(it.name, x + cw / 2, y + 40);
       ctx.fillStyle = '#b9c5d6'; ctx.font = '12px system-ui, sans-serif'; ctx.fillText(it.desc, x + cw / 2, y + 64);
       ctx.fillStyle = can ? '#f2b544' : 'rgba(255,120,120,.9)'; ctx.font = 'bold 15px system-ui, sans-serif'; ctx.fillText('$' + cost, x + cw / 2, y + 122);
+      uiTaps.push({ x, y, w: cw, h: 150, fn: () => { if (shop.sel === i) buyItem(it); else shop.sel = i; } });
     });
     if (shop.flash > 0) { ctx.fillStyle = rgba([255, 120, 120], shop.flash); ctx.font = 'bold 13px system-ui, sans-serif'; ctx.fillText('Not enough shards', W / 2, 350); }
     if (shop.bought > 0) { ctx.fillStyle = rgba([120, 255, 140], shop.bought); ctx.font = 'bold 13px system-ui, sans-serif'; ctx.fillText('Brewed.', W / 2, 350); }
@@ -1620,8 +1627,8 @@ function drawCrewHUD() {
     ctx.fillStyle = '#f6ecd8'; ctx.font = '13px system-ui, sans-serif'; ctx.textAlign = 'left';
     const words = talk.text.split(' '); let line = '', ly = by + 28; const maxW = boxW - 90;
     for (const wd of words) { const test = line + wd + ' '; if (ctx.measureText(test).width > maxW) { ctx.fillText(line, bx + 68, ly); line = wd + ' '; ly += 17; } else line = test; } ctx.fillText(line, bx + 68, ly);
-    if (talk.options) { let ox = bx + 68; talk.options.forEach((o, i) => { ctx.font = 'bold 12px system-ui, sans-serif'; const w = ctx.measureText(o.label).width + 20; ctx.fillStyle = i === talk.sel ? 'rgba(242,181,68,.25)' : 'rgba(255,255,255,.06)'; rr(ctx, ox, by + bh - 34, w, 24, 6); ctx.fill(); ctx.strokeStyle = i === talk.sel ? '#f2b544' : 'rgba(246,236,216,.2)'; ctx.lineWidth = 1; rr(ctx, ox, by + bh - 34, w, 24, 6); ctx.stroke(); ctx.fillStyle = '#f6ecd8'; ctx.fillText(o.label, ox + 10, by + bh - 18); ox += w + 8; }); }
-    else { ctx.font = '10px system-ui, sans-serif'; ctx.fillStyle = 'rgba(246,236,216,.5)'; ctx.textAlign = 'right'; ctx.fillText('E to continue', bx + boxW - 12, by + bh - 8); }
+    if (talk.options) { let ox = bx + 68; talk.options.forEach((o, i) => { ctx.font = 'bold 12px system-ui, sans-serif'; const w = ctx.measureText(o.label).width + 20; ctx.fillStyle = i === talk.sel ? 'rgba(242,181,68,.25)' : 'rgba(255,255,255,.06)'; rr(ctx, ox, by + bh - 34, w, 24, 6); ctx.fill(); ctx.strokeStyle = i === talk.sel ? '#f2b544' : 'rgba(246,236,216,.2)'; ctx.lineWidth = 1; rr(ctx, ox, by + bh - 34, w, 24, 6); ctx.stroke(); ctx.fillStyle = '#f6ecd8'; ctx.fillText(o.label, ox + 10, by + bh - 18); uiTaps.push({ x: ox - 4, y: by + bh - 40, w: w + 8, h: 36, fn: () => { talk.open = false; talk.justClosed = true; if (o.fn) o.fn(); } }); ox += w + 8; }); }
+    else { ctx.font = '10px system-ui, sans-serif'; ctx.fillStyle = 'rgba(246,236,216,.5)'; ctx.textAlign = 'right'; ctx.fillText('tap or E to continue', bx + boxW - 12, by + bh - 8); uiTaps.push({ x: bx, y: by, w: boxW, h: bh, fn: () => { if (talk.t > 0.2) { talk.open = false; talk.justClosed = true; } } }); }
   }
   ctx.textAlign = 'left';
 }
