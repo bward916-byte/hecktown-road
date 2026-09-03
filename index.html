@@ -1590,6 +1590,7 @@ function drawStoryFront() {
 function updateStoryInteract() {
   if (talk.open || shop.open) return;
   if (!edge.use) return;
+  if (stage.active && stage.grace && gameTime < stage.grace) return;
   if (player.carry) { const n = nearNPC(); if (n && n.acceptsPackage) { n.acceptsPackage(player.carry); packages.splice(packages.indexOf(player.carry), 1); player.carry = null; return; } }
   const sc = nearScan(); if (sc) { sc.done = true; sc.seq = (stage.seq = (stage.seq || 0) + 1); spawn({ k: 'flash', x: sc.x, y: sc.y - 40, life: 0.3, t: 0, c: [242, 181, 68] }); banner('Scanned ' + sc.sku, 1.2); return; }
   const pk = nearPackage(); if (pk && !player.carry) { pk.carried = true; player.carry = pk; }
@@ -2206,7 +2207,7 @@ const STAGE_STEPS_BY_WORLD = {
   taunton: STAGE_STEPS,
   spartanburg: [
     { name: 'Storm delivery', time: 34 },
-    { name: 'Forklift: ram 8 Static', time: 45 },
+    { name: 'Forklift: ram 6 Static', time: 45 },
     { name: 'Boss', time: 0 },
   ],
 };
@@ -2227,7 +2228,7 @@ function updateStageWorld(dt) {
   const s = stageSteps()[stage.step]; stage.stepT += dt;
   if (s.time) { stage.timer -= dt; if (stage.timer <= 0) { failStage('Out of time'); return true; } }
   if (stage.step === 0) { stage.spawnT -= dt; if (stage.spawnT <= 0) { stage.spawnT = 5; spawnGroup(player.x, ['flicker', 'flicker']); } if (stage.delivered) { stage.step = 1; grantSkill('challenge'); beginStep(); } }
-  else if (stage.step === 1) { stage.spawnT -= dt; if (stage.spawnT <= 0) { stage.spawnT = 2.2; spawnGroup(player.x, ['flicker', 'packet']); } if (forklift.rams >= 8) { stage.step = 2; grantSkill('challenge'); beginStep(); } }
+  else if (stage.step === 1) { stage.spawnT -= dt; if (stage.spawnT <= 0) { stage.spawnT = 1.9; spawnGroup(player.x, ['flicker', 'flicker', 'packet']); } if (forklift.rams >= 6) { stage.step = 2; grantSkill('challenge'); beginStep(); } }
   return true;
 }
 
@@ -2411,7 +2412,7 @@ function stageStepsOf(def) { return def.steps || STAGE_STEPS_BY_WORLD[def.id] ||
 function beginStepGeneric() {
   const def = WORLD.def; if (!def.steps) return false;
   const d = stage.door, s = def.steps[stage.step];
-  clearStageEnemies(); packages.length = 0; scanTargets.length = 0; valves.length = 0; stage.seq = 0; stage.spawnT = 2.5; stage.timer = s.time || 0; stage.stepT = 0; stage.progress = 0; stage.delivered = false;
+  clearStageEnemies(); packages.length = 0; scanTargets.length = 0; valves.length = 0; stage.seq = 0; stage.grace = gameTime + 0.35; stage.spawnT = 2.5; stage.timer = s.time || 0; stage.stepT = 0; stage.progress = 0; stage.delivered = false;
   restoredBanner.t = 3; restoredBanner.text = (stage.step + 1) + ' / 3  ·  ' + s.name;
   const npc = npcs.find(n => !n.hero && !n.cat);
   if (npc) { npc.x = d.x1 - 60; npc.y = groundYAt(npc.x); }
@@ -2439,7 +2440,7 @@ const valves = [];
 function nearValve() { for (const v of valves) if (!v.open && Math.abs(v.x - player.x) < 34 && Math.abs(v.y - player.y) < 40) return v; return null; }
 function updateValves() {
   const v = nearValve(); WORLD.nearValve = v;
-  if (v && edge.use && !talk.open) {
+  if (v && edge.use && !talk.open && !(stage.grace && gameTime < stage.grace)) {
     const nextIdx = stage.order[valves.filter(x => x.open).length];
     if (v.i === nextIdx) { v.open = true; spawn({ k: 'flash', x: v.x, y: v.y - 30, life: 0.3, t: 0, c: [120, 220, 255] }); for (let k = 0; k < 8; k++) spawn({ k: 'ring', x: v.x + rnd(-10, 10), y: v.y - 10, life: 0.5, t: 0 }); banner('V' + (v.i + 1) + ' open', 1); }
     else failStage('Wrong valve');
