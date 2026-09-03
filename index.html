@@ -421,7 +421,7 @@ function drawEastonPlay(g) {
     // dock + warehouse wing
     drawDock(g);
     // trailer + cab
-    drawTrailer(g, 2470, 288);
+    drawTrailer(g, 2470, 288, WORLD.groundY);
     // crates and pallets
     drawCrate(g, 620, 404); drawCrate(g, 656, 404); drawCrate(g, 638, 368);
     drawPallet(g, 1500, 412); drawPallet(g, 1500, 384); drawPallet(g, 1440, 412);
@@ -546,28 +546,29 @@ function drawDock(g) {
   g.fillStyle = '#e9d27a'; for (let xx = 1720; xx < 2440; xx += 20) g.fillRect(xx, 436, 10, 4);
 }
 
-function drawTrailer(g, x, y) {
-  g.fillStyle = 'rgba(0,0,0,.18)'; g.beginPath(); g.ellipse(x + 240, WORLD.groundY, 260, 8, 0, 0, Math.PI * 2); g.fill();
+function drawTrailer(g, x, y, gy) {
+  gy = gy === undefined ? y + 138 : gy; // ground the wheels rest on
+  const wy = gy - 20; // axle height
+  g.fillStyle = 'rgba(0,0,0,.18)'; g.beginPath(); g.ellipse(x + 240, gy, 260, 8, 0, 0, Math.PI * 2); g.fill();
   const gr = g.createLinearGradient(0, y, 0, y + 92); gr.addColorStop(0, '#f4f2ec'); gr.addColorStop(1, '#cfcac0');
   g.fillStyle = gr; rr(g, x, y, 420, 92, 5); g.fill();
   g.strokeStyle = 'rgba(0,0,0,.08)'; g.lineWidth = 1; for (let xx = x + 10; xx < x + 420; xx += 10) { g.beginPath(); g.moveTo(xx, y + 2); g.lineTo(xx, y + 90); g.stroke(); }
   g.fillStyle = '#243447'; g.font = 'bold 26px Georgia, serif'; g.textAlign = 'center'; g.fillText('PHILLIPS', x + 210, y + 44);
   g.fillStyle = '#f2b544'; g.fillRect(x + 90, y + 52, 240, 4);
   g.fillStyle = '#5b6670'; g.font = '10px system-ui, sans-serif'; g.fillText('PET FOOD & SUPPLIES  •  SINCE 1938', x + 210, y + 70);
-  // undercarriage + wheels
-  g.fillStyle = '#2c3038'; g.fillRect(x + 20, y + 92, 380, 10);
-  for (const wx of [x + 300, x + 345]) { g.fillStyle = '#1b1d22'; g.beginPath(); g.arc(wx, y + 118, 20, 0, Math.PI * 2); g.fill(); g.fillStyle = '#6a6d75'; g.beginPath(); g.arc(wx, y + 118, 9, 0, Math.PI * 2); g.fill(); }
-  g.fillStyle = '#2c3038'; g.fillRect(x + 60, y + 102, 6, 30);
+  // chassis: from the box down to the axle, plus landing gear
+  g.fillStyle = '#2c3038'; g.fillRect(x + 20, y + 92, 380, 8); g.fillRect(x + 280, y + 92, 100, wy - (y + 92)); g.fillRect(x + 60, y + 100, 6, wy - y - 100 + 12);
+  for (const wx of [x + 300, x + 345]) { g.fillStyle = '#1b1d22'; g.beginPath(); g.arc(wx, wy, 20, 0, Math.PI * 2); g.fill(); g.fillStyle = '#6a6d75'; g.beginPath(); g.arc(wx, wy, 9, 0, Math.PI * 2); g.fill(); }
   // cab
   const cx = x + 420;
   g.fillStyle = '#c0392b'; rr(g, cx, y + 40, 64, 52, 6); g.fill(); rr(g, cx + 20, y + 4, 44, 44, 6); g.fill();
   g.fillStyle = '#243447'; rr(g, cx + 30, y + 12, 28, 24, 3); g.fill();
-  g.fillStyle = '#1b1d22'; g.beginPath(); g.arc(cx + 24, y + 118, 20, 0, Math.PI * 2); g.fill(); g.beginPath(); g.arc(cx + 66, y + 118, 20, 0, Math.PI * 2); g.fill();
-  g.fillStyle = '#6a6d75'; g.beginPath(); g.arc(cx + 24, y + 118, 9, 0, Math.PI * 2); g.fill(); g.beginPath(); g.arc(cx + 66, y + 118, 9, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#2c3038'; g.fillRect(cx + 4, y + 92, 76, wy - (y + 92)); // cab frame down to the axle
+  g.fillStyle = '#1b1d22'; g.beginPath(); g.arc(cx + 24, wy, 20, 0, Math.PI * 2); g.fill(); g.beginPath(); g.arc(cx + 66, wy, 20, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#6a6d75'; g.beginPath(); g.arc(cx + 24, wy, 9, 0, Math.PI * 2); g.fill(); g.beginPath(); g.arc(cx + 66, wy, 9, 0, Math.PI * 2); g.fill();
   g.fillStyle = '#fff3c4'; g.fillRect(cx + 58, y + 70, 8, 8);
   g.fillStyle = '#8d8d95'; g.fillRect(cx + 8, y - 12, 4, 54); // exhaust stack
 }
-
 function drawCrate(g, x, y) {
   g.fillStyle = '#b07a3e'; g.fillRect(x, y, 36, 36); g.fillStyle = '#8a5c2c'; g.fillRect(x, y, 36, 4); g.fillRect(x, y + 32, 36, 4); g.fillRect(x, y, 4, 36); g.fillRect(x + 32, y, 4, 36);
   g.strokeStyle = '#8a5c2c'; g.lineWidth = 2; g.beginPath(); g.moveTo(x + 4, y + 4); g.lineTo(x + 32, y + 32); g.moveTo(x + 32, y + 4); g.lineTo(x + 4, y + 32); g.stroke();
@@ -1699,7 +1700,7 @@ function drawTauntonPlay(g) {
   // rocks + jetty at the far end
   g.fillStyle = '#6a6f6a'; g.beginPath(); g.moveTo(3320, gy); g.lineTo(3360, gy - 28); g.lineTo(3440, gy - 30); g.lineTo(3520, gy - 58); g.lineTo(3600, gy - 60); g.lineTo(3600, gy); g.closePath(); g.fill();
   // truck (drive home) parked at the far right
-  drawTrailer(g, WORLD.truckX, 288);
+  drawTrailer(g, WORLD.truckX, 288, WORLD.groundY);
   // sign
   g.fillStyle = '#2c3038'; g.fillRect(120, 380, 4, 60); g.fillStyle = '#1e6e3a'; rr(g, 50, 364, 144, 30, 4); g.fill(); g.fillStyle = '#fff'; g.font = 'bold 12px system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('TAUNTON  ·  RTE 140', 122, 384);
   // scrub oaks
@@ -1944,22 +1945,22 @@ function renderDrive() {
     else if (o.k === 'flicker') { const s = o.scatter; const e = { t: o.t, hit: 0, w: 18, h: 18, onGround: true, type: 'flicker', facing: -1, d: ENEMY.flicker }; ctx.save(); ctx.translate(x + 240 - s * 80, ry + 2 - Math.abs(Math.sin(o.t * 12)) * 12 - s * 60); ctx.globalAlpha = 1 - s / 2; ctx.scale(-1, 1); drawEnemy(ctx, Object.assign(e, { x: 0, y: 0 })); ctx.restore(); }
   }
   // truck
-  const ty = 300 + drive.hop + Math.sin(drive.t * 22) * (drive.hop === 0 ? 1.2 : 0);
-  ctx.save(); ctx.translate(0, ty - 300);
-  drawTrailer(ctx, 120, 300);
+  const ty = 270 + drive.hop + Math.sin(drive.t * 22) * (drive.hop === 0 ? 1.2 : 0);
+  ctx.save(); ctx.translate(0, ty - 270);
+  drawTrailer(ctx, 120, 270, ry);
   // spinning wheel hubs
-  ctx.strokeStyle = '#9aa0a8'; ctx.lineWidth = 2; for (const wx of [420, 465, 120 + 420 + 24, 120 + 420 + 66]) { for (let k = 0; k < 4; k++) { const a = drive.wheel + k * Math.PI / 2; ctx.beginPath(); ctx.moveTo(wx, 418); ctx.lineTo(wx + Math.cos(a) * 14, 418 + Math.sin(a) * 14); ctx.stroke(); } }
+  ctx.strokeStyle = '#9aa0a8'; ctx.lineWidth = 2; for (const wx of [420, 465, 120 + 420 + 24, 120 + 420 + 66]) { for (let k = 0; k < 4; k++) { const a = drive.wheel + k * Math.PI / 2; ctx.beginPath(); ctx.moveTo(wx, ry - 20); ctx.lineTo(wx + Math.cos(a) * 14, ry - 20 + Math.sin(a) * 14); ctx.stroke(); } }
   // pack in the trailer: heads at the back window; Biscuit in the cab
-  ctx.fillStyle = '#243447'; rr(ctx, 130, 322, 70, 36, 4); ctx.fill();
-  crew.forEach((f, i) => { ctx.save(); ctx.translate(146 + i * 22, 358 + (i % 2) * 2); ctx.scale(0.55, 0.55); drawHero(ctx, f.hero, 0, 0, 1, { t: gameTime + i, run: 0, moving: false }, null); ctx.restore(); });
-  ctx.save(); ctx.translate(560, 348); ctx.scale(0.8, 0.8); drawBiscuit(ctx, { x: 0, y: 0, facing: 1, moving: false, run: 0, t: gameTime, earA: -0.4 + Math.sin(gameTime * 8) * 0.2 }, null); ctx.restore();
-  ctx.save(); ctx.translate(582, 352); ctx.scale(0.7, 0.7); drawHero(ctx, hero, 0, 0, 1, { t: gameTime, run: 0, moving: false }, null); ctx.restore();
+  ctx.fillStyle = '#243447'; rr(ctx, 130, 292, 70, 36, 4); ctx.fill();
+  crew.forEach((f, i) => { ctx.save(); ctx.translate(146 + i * 22, 328 + (i % 2) * 2); ctx.scale(0.55, 0.55); drawHero(ctx, f.hero, 0, 0, 1, { t: gameTime + i, run: 0, moving: false }, null); ctx.restore(); });
+  ctx.save(); ctx.translate(560, 318); ctx.scale(0.8, 0.8); drawBiscuit(ctx, { x: 0, y: 0, facing: 1, moving: false, run: 0, t: gameTime, earA: -0.4 + Math.sin(gameTime * 8) * 0.2 }, null); ctx.restore();
+  ctx.save(); ctx.translate(582, 322); ctx.scale(0.7, 0.7); drawHero(ctx, hero, 0, 0, 1, { t: gameTime, run: 0, moving: false }, null); ctx.restore();
   // headlights at night
-  if (night > 0.2) { ctx.save(); ctx.globalCompositeOperation = 'screen'; const hg = ctx.createLinearGradient(600, 380, 900, 380); hg.addColorStop(0, rgba([255, 240, 200], night * 0.45)); hg.addColorStop(1, 'rgba(255,240,200,0)'); ctx.fillStyle = hg; ctx.beginPath(); ctx.moveTo(600, 372); ctx.lineTo(960, 330); ctx.lineTo(960, 420); ctx.lineTo(600, 386); ctx.closePath(); ctx.fill(); ctx.restore(); }
-  if (drive.honk > 0) { ctx.fillStyle = rgba([255, 255, 255], drive.honk); ctx.font = 'bold 22px Georgia, serif'; ctx.textAlign = 'left'; ctx.fillText('HONK!', 610, 300 - Math.sin(drive.honk * 10) * 6); }
+  if (night > 0.2) { ctx.save(); ctx.globalCompositeOperation = 'screen'; const hg = ctx.createLinearGradient(600, 350, 900, 350); hg.addColorStop(0, rgba([255, 240, 200], night * 0.45)); hg.addColorStop(1, 'rgba(255,240,200,0)'); ctx.fillStyle = hg; ctx.beginPath(); ctx.moveTo(600, 342); ctx.lineTo(960, 300); ctx.lineTo(960, 396); ctx.lineTo(600, 356); ctx.closePath(); ctx.fill(); ctx.restore(); }
+  if (drive.honk > 0) { ctx.fillStyle = rgba([255, 255, 255], drive.honk); ctx.font = 'bold 22px Georgia, serif'; ctx.textAlign = 'left'; ctx.fillText('HONK!', 610, 270 - Math.sin(drive.honk * 10) * 6); }
   ctx.restore();
   // exhaust puffs
-  ctx.fillStyle = 'rgba(200,200,210,.25)'; for (let k = 0; k < 4; k++) ctx.beginPath(), ctx.arc(552 - k * 14 - (drive.t * 60 % 14), 280 - k * 8 + drive.hop, 4 + k * 2, 0, Math.PI * 2), ctx.fill();
+  ctx.fillStyle = 'rgba(200,200,210,.25)'; for (let k = 0; k < 4; k++) ctx.beginPath(), ctx.arc(552 - k * 14 - (drive.t * 60 % 14), 250 - k * 8 + drive.hop, 4 + k * 2, 0, Math.PI * 2), ctx.fill();
   // rain/snow not modelled on the drive; keep grain + vignette
   const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.5, W / 2, H / 2, H); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(10,10,30,.28)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
   ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = 0.35; ctx.drawImage(LAYERS.grain, 0, 0); ctx.restore();
@@ -2088,7 +2089,7 @@ function drawSpartanburgPlay(g) {
   g.fillStyle = '#7a6a4a'; g.beginPath(); g.moveTo(3560, gy); g.lineTo(3600, gy - 30); g.lineTo(3680, gy - 30); g.lineTo(3680, gy - 60); g.lineTo(3760, gy - 60); g.lineTo(3760, gy - 90); g.lineTo(3880, gy - 90); g.lineTo(3880, gy); g.closePath(); g.fill();
   g.fillStyle = '#8fa554'; g.fillRect(3600, gy - 32, 80, 4); g.fillRect(3680, gy - 62, 80, 4); g.fillRect(3760, gy - 92, 120, 4);
   // truck
-  drawTrailer(g, WORLD.truckX, 288);
+  drawTrailer(g, WORLD.truckX, 288, WORLD.groundY);
   // sign
   g.fillStyle = '#2c3038'; g.fillRect(120, 380, 4, 60); g.fillStyle = '#1e6e3a'; rr(g, 40, 364, 164, 30, 4); g.fill(); g.fillStyle = '#fff'; g.font = 'bold 12px system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('SPARTANBURG  ·  I-85', 122, 384);
 }
@@ -2341,7 +2342,7 @@ function drawDC(g, o) {
   g.fillStyle = o.rock; g.beginPath(); g.moveTo(3560, gy); g.lineTo(3600, gy - 30); g.lineTo(3680, gy - 30); g.lineTo(3680, gy - 60); g.lineTo(3760, gy - 60); g.lineTo(3760, gy - 90); g.lineTo(3880, gy - 90); g.lineTo(3880, gy); g.closePath(); g.fill();
   g.fillStyle = o.grass; g.fillRect(3600, gy - 32, 80, 4); g.fillRect(3680, gy - 62, 80, 4); g.fillRect(3760, gy - 92, 120, 4);
   if (o.after) o.after(g, gy);
-  drawTrailer(g, WORLD.truckX, 288);
+  drawTrailer(g, WORLD.truckX, 288, WORLD.groundY);
   g.fillStyle = '#2c3038'; g.fillRect(120, 380, 4, 60); g.fillStyle = '#1e6e3a'; rr(g, 40, 364, 164, 30, 4); g.fill(); g.fillStyle = '#fff'; g.font = 'bold 12px system-ui, sans-serif'; g.textAlign = 'center'; g.fillText(o.road, 122, 384);
 }
 const DC_SOLIDS = () => [[0, 440, 4300, 200, 0], [1720, 392, 600, 48, 0], [1680, 416, 40, 24, 0], [3540, 288, 420, 92, 0], [3960, 328, 64, 54, 0], [3600, 410, 80, 30, 0], [3680, 380, 80, 60, 0], [3760, 350, 120, 90, 0]];
