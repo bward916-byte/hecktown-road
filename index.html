@@ -291,20 +291,21 @@ function drawBiscuit(c, d, lit) {
   c.fillStyle = 'rgba(0,0,0,.2)'; c.beginPath(); c.ellipse(0, 1, 16, 3.5, 0, 0, Math.PI * 2); c.fill();
   c.translate(0, -bob);
   const legA = d.moving ? Math.sin(d.run * Math.PI * 2) * 0.7 : 0;
-  c.fillStyle = '#b97a3f';
+  const col = d.col || '#c98a4a'; const dark = d.col ? d.col : '#8c5a2b';
+  c.fillStyle = d.col || '#b97a3f';
   for (const [sx, ph] of [[-9, 0], [7, Math.PI], [-6, Math.PI], [10, 0]]) { c.save(); c.translate(sx, -11); c.rotate(legA * Math.cos(ph)); rr(c, -2.5, 0, 5, 12, 2.5); c.fill(); c.restore(); }
   // body
-  c.fillStyle = '#c98a4a'; rr(c, -15, -22, 30, 14, 7); c.fill();
+  c.fillStyle = col; rr(c, -15, -22, 30, 14, 7); c.fill();
   // tail
   const wag = Math.sin(d.t * (d.moving ? 18 : 6)) * 0.6;
-  c.save(); c.translate(-15, -20); c.rotate(-0.8 + wag); c.fillStyle = '#c98a4a'; rr(c, -2, -12, 4, 14, 2); c.fill(); c.restore();
+  c.save(); c.translate(-15, -20); c.rotate(-0.8 + wag); c.fillStyle = col; rr(c, -2, -12, 4, 14, 2); c.fill(); c.restore();
   // head
-  c.fillStyle = '#c98a4a'; c.beginPath(); c.arc(14, -24, 9, 0, Math.PI * 2); c.fill();
-  c.fillStyle = '#8c5a2b'; rr(c, 16, -22, 9, 7, 3); c.fill(); // muzzle
+  c.fillStyle = col; c.beginPath(); c.arc(14, -24, 9, 0, Math.PI * 2); c.fill();
+  c.fillStyle = dark; rr(c, 16, -22, 9, 7, 3); c.fill(); // muzzle
   c.fillStyle = '#1b1b1f'; c.beginPath(); c.arc(24, -21, 2, 0, Math.PI * 2); c.fill(); // nose
   c.beginPath(); c.arc(15, -27, 1.6, 0, Math.PI * 2); c.fill(); // eye
   // ears (spring)
-  c.fillStyle = '#8c5a2b';
+  c.fillStyle = dark;
   c.save(); c.translate(9, -31); c.rotate(-0.3 + d.earA); rr(c, -3, 0, 6, 12, 3); c.fill(); c.restore();
   // collar + tag
   c.fillStyle = '#c0392b'; rr(c, 6, -19, 8, 3, 1.5); c.fill();
@@ -798,6 +799,8 @@ function render() {
   drawValves();
   drawForklift(ctx, night);
   drawCrew(night);
+  drawAnimals(night);
+  drawContainers();
   drawCats();
   drawBiscuit(ctx, dog, nearestLight(dog.x, dog.y - 14, night));
   if (dog.grr > 0) { ctx.fillStyle = 'rgba(16,26,46,.7)'; rr(ctx, dog.x - 18, dog.y - 58, 36, 16, 5); ctx.fill(); ctx.fillStyle = '#ff8a5a'; ctx.font = 'bold 9px system-ui'; ctx.textAlign = 'center'; ctx.fillText('grrr', dog.x, dog.y - 46); ctx.textAlign = 'left'; }
@@ -1031,10 +1034,12 @@ function killEnemy(e) {
 }
 function spark(x, y, c, n) { for (let i = 0; i < n; i++) spawn({ k: 'spark', x, y, vx: rnd(-160, 160), vy: rnd(-160, 160), life: rnd(0.15, 0.35), t: 0, c }); }
 
+let shooterName = '';
 function updateEnemy(e, dt) {
   e.t += dt; if (e.hit > 0) e.hit -= dt; if (e.born > 0) e.born -= dt; if (e.stun > 0) e.stun -= dt; if (e.slow > 0) e.slow -= dt; if (e.weak > 0) e.weak -= dt;
   if (e.d.cocoon) return;
-  const dx = player.x - e.x, dist = Math.abs(dx);
+  const tgtX = e.goalX !== undefined ? e.goalX : player.x;
+  const dx = tgtX - e.x, dist = Math.abs(dx);
   const sp = e.d.speed * (e.slow > 0 ? 0.5 : 1) * (e.stun > 0 ? 0 : 1);
   if (e.d.ghost) { e.revealed = dist < 110 ? 1 : Math.max(0, e.revealed - dt * 2); e.targetable = e.revealed > 0.05; }
   if (e.stun <= 0 && e.born <= 0) {
@@ -1133,6 +1138,7 @@ function shooterPos(sh) { return { x: sh.x, y: sh.y - 30 }; }
 function updateShooter(sh, dt, isLeader) {
   const w = weaponOf(sh.hero); if (!w) return;
   if (!story.weaponsOnline) return;
+  shooterName = sh.hero.name;
   sh.wcd = (sh.wcd || 0) - dt;
   const mul = isLeader ? 1.5 : 1;
   const p = shooterPos(sh); const range = w.range * rangeMul(sh);
@@ -1157,27 +1163,27 @@ function updateShooter(sh, dt, isLeader) {
   sh.recoil = 0.12;
   switch (w.kind) {
     case 'dart': for (let k = 0; k <= extraCount(sh); k++) fireDart(p.x, p.y, target, w, mul, (k - extraCount(sh) / 2) * 0.12); break;
-    case 'homing': for (let k = 0; k <= extraCount(sh); k++) projs.push({ k: 'homing', x: p.x, y: p.y, vx: -sh.facing * 120 + (k - 1) * 60, vy: -220 - k * 40, target, spd: w.speed, dmg: w.dmg * mul, t: 0, life: 3.5, c: w.color, w }); break;
-    case 'lob': for (let k = 0; k <= extraCount(sh); k++) { const dx = target.x - p.x, dy = (target.y - 10) - p.y; const T = 0.75 + k * 0.1; projs.push({ k: 'lob', x: p.x, y: p.y, vx: dx / T, vy: dy / T - 0.5 * G * T, dmg: w.dmg * mul, aoe: w.aoe, t: 0, life: 3, c: w.color, w }); } break;
-    case 'lines': { const dx = target.x - p.x, dy = (target.y - target.h / 2) - p.y, L = Math.hypot(dx, dy) || 1; for (let k = -1 - extraCount(sh); k <= 1 + extraCount(sh); k++) { const a = Math.atan2(dy, dx) + k * 0.16; projs.push({ k: 'line', x: p.x, y: p.y, vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed, dmg: w.dmg * mul, t: 0, life: 0.8, c: w.color, pierce: 1, w }); } break; }
+    case 'homing': for (let k = 0; k <= extraCount(sh); k++) projs.push({ k: 'homing', x: p.x, y: p.y, vx: -sh.facing * 120 + (k - 1) * 60, vy: -220 - k * 40, target, spd: w.speed, dmg: w.dmg * mul, t: 0, life: 3.5, c: w.color, w, hero: shooterName }); break;
+    case 'lob': for (let k = 0; k <= extraCount(sh); k++) { const dx = target.x - p.x, dy = (target.y - 10) - p.y; const T = 0.75 + k * 0.1; projs.push({ k: 'lob', x: p.x, y: p.y, vx: dx / T, vy: dy / T - 0.5 * G * T, dmg: w.dmg * mul, aoe: w.aoe, t: 0, life: 3, c: w.color, w, hero: shooterName }); } break;
+    case 'lines': { const dx = target.x - p.x, dy = (target.y - target.h / 2) - p.y, L = Math.hypot(dx, dy) || 1; for (let k = -1 - extraCount(sh); k <= 1 + extraCount(sh); k++) { const a = Math.atan2(dy, dx) + k * 0.16; projs.push({ k: 'line', x: p.x, y: p.y, vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed, dmg: w.dmg * mul, t: 0, life: 0.8, c: w.color, pierce: 1, w, hero: shooterName }); } break; }
     case 'chain': { let cur = target, from = p, hit = new Set(); for (let h = 0; h <= w.hops + extraCount(sh) && cur; h++) { beams.push({ x1: from.x, y1: from.y - (from === p ? 0 : cur.h / 2), x2: cur.x, y2: cur.y - cur.h / 2, t: 0, life: 0.2, c: w.color, bolt: 1 }); damageEnemy(cur, w.dmg * mul * (h === 0 ? 1 : 0.8), p.x); hit.add(cur); from = cur; const c2 = cur; cur = nearestEnemy(cur.x, cur.y - cur.h / 2, w.hopR, e => !hit.has(e) && e !== c2); } break; }
-    case 'beam': beams.push({ src: sh, target, t: 0, life: w.dur, c: w.color, dmg: w.dmg * mul, tick: 0, lance: 1 }); break;
+    case 'beam': beams.push({ src: sh, target, t: 0, life: w.dur, c: w.color, dmg: w.dmg * mul, tick: 0, lance: 1, hero: shooterName }); break;
     case 'ring': { const R = range; let any = false; forEnemiesNear(p.x, p.y, R, e => { if ((e.x - p.x) ** 2 + (e.y - p.y) ** 2 < R * R) { damageEnemy(e, w.dmg * mul, p.x); any = true; } }); summons.push({ k: 'ring', x: p.x, y: p.y, r: 10, R, t: 0, life: 0.55, c: w.color }); if (!any) sh.wcd = 0.6; break; }
     case 'slam': { const R = range; forEnemiesNear(p.x, p.y, R, e => { if (Math.abs(e.x - p.x) < R && Math.abs(e.y - p.y) < 80) { damageEnemy(e, w.dmg * mul, p.x); e.stun = Math.max(e.stun, w.stun); } }); summons.push({ k: 'slam', x: p.x, y: sh.y, R, t: 0, life: 0.5, c: w.color }); shake = Math.max(shake, 0.18); puff(sh.x, sh.y, 10); break; }
-    case 'trap': summons.push({ k: 'trap', x: target.x, y: groundYAt(target.x), w: 120 + extraCount(sh) * 30, h: 70, t: 0, life: w.life, c: w.color, dmg: w.dmg * mul, tick: 0 }); break;
+    case 'trap': summons.push({ k: 'trap', x: target.x, y: groundYAt(target.x), w: 120 + extraCount(sh) * 30, h: 70, t: 0, life: w.life, c: w.color, dmg: w.dmg * mul, tick: 0, hero: sh.hero }); break;
     case 'turret': summons.push({ k: 'turret', x: sh.x + sh.facing * 30, y: groundYAt(sh.x + sh.facing * 30), t: 0, life: w.life + extraCount(sh), c: w.color, cd: 0, w, mul, facing: sh.facing, hero: sh.hero }); break;
   }
 }
 function fireDart(x, y, target, w, mul, spread) {
   if (projs.length >= MAXPROJ) return;
   const dx = target.x - x, dy = (target.y - target.h / 2) - y; const a = Math.atan2(dy, dx) + (spread || 0);
-  projs.push({ k: 'dart', x, y, vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed, dmg: w.dmg * mul, t: 0, life: 1.2, c: w.color, pierce: w.pierce || 0, w });
+  projs.push({ k: 'dart', x, y, vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed, dmg: w.dmg * mul, t: 0, life: 1.2, c: w.color, pierce: w.pierce || 0, w, hero: shooterName });
   spawn({ k: 'flash', x, y, life: 0.08, t: 0, c: w.color });
 }
 
 function updateProjs(dt) {
   for (let i = projs.length - 1; i >= 0; i--) {
-    const p = projs[i]; p.t += dt; p.px = p.x; p.py = p.y;
+    const p = projs[i]; p.t += dt; p.px = p.x; p.py = p.y; shooterName = p.hero || '';
     if (p.k === 'homing') { if (p.target && !p.target.dead) { const tx = p.target.x, ty = p.target.y - p.target.h / 2; const dx = tx - p.x, dy = ty - p.y, L = Math.hypot(dx, dy) || 1; p.vx += (dx / L * p.spd - p.vx) * Math.min(1, dt * 4); p.vy += (dy / L * p.spd - p.vy) * Math.min(1, dt * 4); } else { const t = nearestEnemy(p.x, p.y, 400); if (t) p.target = t; } if (p.t % 0.05 < dt) spawn({ k: 'trailp', x: p.x, y: p.y, life: 0.3, t: 0, c: p.c, r: 2 }); }
     if (p.k === 'lob') { p.vy += G * dt; if (p.t % 0.04 < dt) spawn({ k: 'trailp', x: p.x, y: p.y, life: 0.25, t: 0, c: p.c, r: 3 }); }
     if (p.k === 'dart' && p.t % 0.03 < dt) spawn({ k: 'trailp', x: p.x, y: p.y, life: 0.15, t: 0, c: p.c, r: 1.5 });
@@ -1191,25 +1197,26 @@ function updateProjs(dt) {
       let hit = null;
       forEnemiesNear(p.x, p.y, 60, e => { if (hit || e.born > 0) return; if (Math.abs(e.x - p.x) < e.w / 2 + 6 && p.y > e.y - e.h - 6 && p.y < e.y + 6) hit = e; });
       if (hit) {
+        hit.lastShooter = shooterName;
         if (p.k === 'lob') die = true;
         else { const ok = damageEnemy(hit, p.dmg, p.px); if (ok || true) { if (p.pierce > 0 && !(p.hitSet && p.hitSet.has(hit))) { p.pierce--; (p.hitSet = p.hitSet || new Set()).add(hit); } else if (!(p.hitSet && p.hitSet.has(hit))) die = true; } }
       }
     }
     if (die) {
-      if (p.k === 'lob') { const R = p.aoe; forEnemiesNear(p.x, p.y, R, e => { if ((e.x - p.x) ** 2 + (e.y - e.h / 2 - p.y) ** 2 < R * R) damageEnemy(e, p.dmg, p.x); }); summons.push({ k: 'boom', x: p.x, y: p.y, R, t: 0, life: 0.4, c: p.c }); shake = Math.max(shake, 0.14); }
+      if (p.k === 'lob') { const R = p.aoe; forEnemiesNear(p.x, p.y, R, e => { if ((e.x - p.x) ** 2 + (e.y - e.h / 2 - p.y) ** 2 < R * R) { e.lastShooter = shooterName; damageEnemy(e, p.dmg, p.x); } }); summons.push({ k: 'boom', x: p.x, y: p.y, R, t: 0, life: 0.4, c: p.c }); shake = Math.max(shake, 0.14); }
       else spark(p.x, p.y, p.c, 2);
       projs.splice(i, 1);
     }
   }
   for (let i = beams.length - 1; i >= 0; i--) {
     const b = beams[i]; b.t += dt;
-    if (b.lance) { const s = shooterPos(b.src); if (!b.target.dead) { b.x1 = s.x; b.y1 = s.y; b.x2 = b.target.x; b.y2 = b.target.y - b.target.h / 2; b.tick -= dt; if (b.tick <= 0) { b.tick = 0.1; damageEnemy(b.target, b.dmg * 0.25, s.x); } } else b.t = 99; }
+    if (b.lance) { const s = shooterPos(b.src); if (!b.target.dead) { b.x1 = s.x; b.y1 = s.y; b.x2 = b.target.x; b.y2 = b.target.y - b.target.h / 2; b.tick -= dt; if (b.tick <= 0) { b.tick = 0.1; b.target.lastShooter = b.hero; damageEnemy(b.target, b.dmg * 0.25, s.x); } } else b.t = 99; }
     if (b.t > b.life) beams.splice(i, 1);
   }
   for (let i = summons.length - 1; i >= 0; i--) {
     const s = summons[i]; s.t += dt;
-    if (s.k === 'trap') { s.tick -= dt; forEnemiesNear(s.x, s.y, s.w, e => { if (Math.abs(e.x - s.x) < s.w / 2 && e.y > s.y - s.h - 10 && e.y <= s.y + 4) { e.slow = 0.2; e.weak = 0.2; if (s.tick <= 0) damageEnemy(e, s.dmg); } }); if (s.tick <= 0) s.tick = 0.5; }
-    if (s.k === 'turret') { s.cd -= dt; if (s.cd <= 0) { const t = nearestEnemy(s.x, s.y - 20, s.w.range * rangeMul(s)); if (t) { s.cd = s.w.fireCd * rateMul(s); s.facing = Math.sign(t.x - s.x) || s.facing; fireDart(s.x, s.y - 22, t, { speed: 600, dmg: s.w.dmg, color: s.c, pierce: 0 }, s.mul, 0); } } }
+    if (s.k === 'trap') { s.tick -= dt; forEnemiesNear(s.x, s.y, s.w, e => { if (Math.abs(e.x - s.x) < s.w / 2 && e.y > s.y - s.h - 10 && e.y <= s.y + 4) { e.slow = 0.2; e.weak = 0.2; if (s.tick <= 0) { e.lastShooter = s.hero ? s.hero.name : ''; damageEnemy(e, s.dmg); } } }); if (s.tick <= 0) s.tick = 0.5; }
+    if (s.k === 'turret') { s.cd -= dt; if (s.cd <= 0) { const t = nearestEnemy(s.x, s.y - 20, s.w.range * rangeMul(s)); if (t) { s.cd = s.w.fireCd * rateMul(s); shooterName = s.hero ? s.hero.name : ''; s.facing = Math.sign(t.x - s.x) || s.facing; fireDart(s.x, s.y - 22, t, { speed: 600, dmg: s.w.dmg, color: s.c, pierce: 0 }, s.mul, 0); } } }
     if (s.t > s.life) summons.splice(i, 1);
   }
   // shards
@@ -1720,7 +1727,7 @@ function loadWorld(id, spawnAt) {
   waveState.alive = 0; waveState.n = 0; waveState.toSpawn = 0; waveState.cd = 3; waveState.paused = true; waveState.rifts.length = 0; waveState.banner = 0;
   arena.active = false; arena.boss = null; stage.active = false; stage.door = null;
   npcs.length = 0; packages.length = 0; scanTargets.length = 0; encounters.length = 0; talk.open = false; player.carry = null;
-  forklift.present = false; forklift.mounted = false; liftPallets.length = 0; catnip.active = 0; bossProjs.length = 0; valves.length = 0; hazard.windT = 0;
+  forklift.present = false; forklift.mounted = false; liftPallets.length = 0; catnip.active = 0; bossProjs.length = 0; valves.length = 0; hazard.windT = 0; containers.length = 0; animals.length = 0;
   const sp = spawnAt || def.spawn;
   player.x = sp.x; player.y = sp.y; player.vx = 0; player.vy = 0; player.dead = 0; player.inv = 0.6;
   dog.x = sp.x - 60; dog.y = sp.y; dog.vx = 0; dog.vy = 0;
@@ -1834,8 +1841,9 @@ function grantSkill(kind) { for (const m of crewAll()) SKILL[m.hero.name] = skil
 function onBossDead(e) {
   arena.active = false; stage.active = false; forklift.mounted = false; forklift.present = false; bossProjs.length = 0;
   waveState.paused = true;
-  restored[WORLD.id] = true;
+  restored[WORLD.id] = true; if (WORLD.id === 'merge') { story.cutoverKey = true; }
   grantSkill('boss');
+  containers.length = 0; SOLIDS = WORLD.def.solids();
   restoredBanner.t = 4.5; restoredBanner.text = WORLD.name.toUpperCase() + ' RESTORED  ·  ' + WORLD.def.driveLabel.toLowerCase() + ' from the truck';
   bucks.n += 40; bucks.total += 40;
   for (let i = 0; i < 30; i++) shards.push({ x: e.x, y: e.y - 30, vx: rnd(-300, 300), vy: rnd(-400, -100), t: 0, v: 1 });
@@ -1862,7 +1870,7 @@ function drawStageHUD() {
     const s = stageStepsOf(WORLD.def)[stage.step];
     ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(16,26,46,.6)'; rr(ctx, W / 2 - 160, 104, 320, 30, 8); ctx.fill();
     if (stage.step < 2) { ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fillRect(W / 2 - 150, 110, 300, 8); ctx.fillStyle = stage.timer < 8 ? '#ff8a5a' : '#7fe0ff'; ctx.fillRect(W / 2 - 150, 110, 300 * clamp(stage.timer / s.time, 0, 1), 8); ctx.fillStyle = '#f6ecd8'; ctx.font = 'bold 10px system-ui, sans-serif'; ctx.fillText((stage.step + 1) + '/3  ' + s.name + '  ·  ' + Math.ceil(stage.timer) + 's', W / 2, 129); }
-    else { const b = arena.boss; if (b && !b.dead) { ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fillRect(W / 2 - 150, 110, 300, 8); ctx.fillStyle = b.targetable ? '#ff8a5a' : 'rgba(255,138,90,.4)'; ctx.fillRect(W / 2 - 150, 110, 300 * b.hp / b.maxHp, 8); ctx.fillStyle = '#f6ecd8'; ctx.font = 'bold 10px system-ui, sans-serif'; ctx.fillText('3/3  ' + stage.door.name + (b.targetable ? '' : '  ·  hiding in the fog'), W / 2, 129); } }
+    else { const b = arena.boss; if (b && !b.dead) { ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fillRect(W / 2 - 150, 110, 300, 8); ctx.fillStyle = b.targetable ? '#ff8a5a' : 'rgba(255,138,90,.4)'; ctx.fillRect(W / 2 - 150, 110, 300 * b.hp / b.maxHp, 8); ctx.fillStyle = '#f6ecd8'; ctx.font = 'bold 10px system-ui, sans-serif'; ctx.fillText('3/3  ' + stage.door.name + (b.targetable ? '' : '  ·  ' + (({ fogserver: 'hiding in the fog', peachpit: 'rolling', drainpipe: 'down the drain', snowdrift: 'charging', gale: 'blades spinning', hydra: 'heads down', crane: 'hook is up', gate: 'hold the door  ·  breaches ' + (stage.breaches || 0) })[b.type] || 'out of reach')), W / 2, 129); } }
     if (stage.fails) { ctx.font = '10px system-ui, sans-serif'; ctx.fillStyle = 'rgba(246,236,216,.6)'; ctx.fillText('attempt ' + (stage.fails + 1), W / 2, 146); }
   }
   ctx.textAlign = 'left';
@@ -1963,6 +1971,7 @@ function updateBoss(e, dt) {
   e.t += dt; if (e.hit > 0) e.hit -= dt;
   if (e.type === 'peachpit') { updatePeachPit(e, dt); return; }
   if (ENEMY[e.type] && ['drainpipe', 'snowdrift', 'gale', 'hydra'].includes(e.type)) { updateAct2Boss(e, dt); return; }
+  if (['crane', 'gate', 'golem'].includes(e.type)) { updateAct3Boss(e, dt); return; }
   const dx = player.x - e.x;
   if (e.type === 'fogserver') {
     e.pt -= dt;
@@ -1988,6 +1997,7 @@ function updateBoss(e, dt) {
 function drawBoss(c, e) {
   if (e.type === 'peachpit') { drawPeachPit(c, e); return; }
   if (['drainpipe', 'snowdrift', 'gale', 'hydra'].includes(e.type)) { drawAct2Boss(c, e); return; }
+  if (['crane', 'gate', 'golem'].includes(e.type)) { drawAct3Boss(c, e); return; }
   c.save(); c.translate(e.x, e.y); c.globalAlpha = e.alpha; c.scale(e.facing, 1);
   const w = e.w, h = e.h, tell = e.phase === 'tell';
   glitchDraw(c, e, (g, tint) => {
@@ -2507,6 +2517,160 @@ function drawAct2Boss(c, e) {
   });
   c.restore();
 }
+
+/* =====================================================================
+   ACT 3 — West Sacramento CA, Aurora CO, The Merge (M7)
+   ===================================================================== */
+restored.sacramento = false; restored.aurora = false; restored.merge = false;
+story.cutoverKey = false;
+
+function farDelta() {
+  { const w = 1400, h = 300, c = mkCanvas(w, h), g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 214, w, h - 214); for (let i = 0; i < 4; i++) { const px = 300 + i * 260; g.fillRect(px, 120, 8, 94); g.fillRect(px - 60, 120, 150, 6); g.fillRect(px + 84, 126, 4, 40); g.fillRect(px - 40, 126, 4, 30); } LAYERS.ridge = c; }
+  { const w = 1600, h = 300, c = mkCanvas(w, h), g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 250, w, h - 250); for (let x = 0; x < w; x += 8) if ((x * 31) % 9 < 3) g.fillRect(x, 244, 2, 6); g.fillRect(600, 232, 120, 18); g.fillRect(640, 216, 20, 16); LAYERS.hills = c; }
+  { const w = 1200, h = 340, c = mkCanvas(w, h), g = c.getContext('2d'); for (let i = 0; i < 12; i++) { const tx = i * 100 + (i % 3) * 14, th = 100 + (i * 43) % 60; g.fillStyle = i % 2 ? '#6a6a3a' : '#5a5a30'; g.fillRect(tx - 3, h - th * 0.5, 6, th * 0.5); for (let k = 0; k < 3; k++) { g.beginPath(); g.ellipse(tx + Math.sin(i + k) * 12, h - th + k * th * 0.2, 34 - k * 4, 16, 0, 0, Math.PI * 2); g.fill(); } } LAYERS.trees = c; }
+}
+function farFrontRange() {
+  { const w = 1400, h = 300, c = mkCanvas(w, h), g = c.getContext('2d'); g.fillStyle = '#000'; g.beginPath(); g.moveTo(0, h); g.lineTo(0, 200); for (let x = 0; x <= w; x += 70) { g.lineTo(x + 35, 96 + (x * 7919 % 60)); g.lineTo(x + 70, 190); } g.lineTo(w, h); g.closePath(); g.fill(); LAYERS.ridge = c; }
+  { const w = 1600, h = 300, c = mkCanvas(w, h), g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 248, w, h - 248); for (let x = 0; x < w; x += 12) if ((x * 31) % 11 < 4) g.fillRect(x, 242, 2, 6); g.fillRect(900, 212, 100, 36); g.fillRect(1010, 222, 60, 26); LAYERS.hills = c; }
+  { const w = 1200, h = 340, c = mkCanvas(w, h), g = c.getContext('2d'); for (let i = 0; i < 12; i++) { const tx = i * 100 + (i % 3) * 14, th = 90 + (i * 43) % 50; g.fillStyle = i % 2 ? '#3a4a3a' : '#2e3e2e'; for (let k = 0; k < 5; k++) { const ww = 18 - k * 2.4; g.beginPath(); g.moveTo(tx - ww, h - k * th * 0.12); g.lineTo(tx + ww, h - k * th * 0.12); g.lineTo(tx, h - (k + 1.8) * th * 0.12); g.closePath(); g.fill(); } } LAYERS.trees = c; }
+}
+function drawCranes(g, gy) { for (const x of [2700, 3150]) { g.fillStyle = '#c0392b'; g.fillRect(x, 120, 10, gy - 120); g.fillRect(x + 60, 120, 10, gy - 120); g.fillRect(x - 80, 120, 230, 12); g.fillStyle = '#2c3038'; g.fillRect(x + 20, 120, 30, 30); g.fillRect(x + 32, 132, 3, 60); g.fillStyle = '#e9d27a'; g.fillRect(x + 20, 190, 28, 8); } g.fillStyle = '#31506a'; g.fillRect(0, gy + 30, 1000, H); g.fillStyle = 'rgba(255,220,150,.35)'; for (let x = 0; x < 1000; x += 38) g.fillRect(x, gy + 34 + (x % 3) * 3, 20, 2); }
+function drawTiltUp(g, gy) { g.fillStyle = '#d8dde4'; g.fillRect(2700, 200, 700, gy - 200); g.fillStyle = '#c0c6cc'; for (let x = 2700; x < 3400; x += 70) g.fillRect(x, 200, 3, gy - 200); g.fillStyle = '#243447'; rr(g, 2900, 180, 300, 44, 6); g.fill(); g.fillStyle = '#f2b544'; g.font = 'bold 24px Georgia, serif'; g.textAlign = 'center'; g.fillText('PHILLIPS', 3050, 212); g.fillStyle = '#e6d7bd'; g.font = '9px system-ui'; g.fillText('AURORA, CO  ·  NEW', 3050, 236); for (const [x, w] of [[300, 180], [700, 120], [4000, 200]]) drawSnowbank(g, x, gy, w); }
+function drawMerge(g, gy) { g.fillStyle = '#8a6a4a'; g.fillRect(2700, 220, 700, gy - 220); g.fillStyle = 'rgba(0,0,0,.1)'; for (let y = 228; y < gy; y += 10) g.fillRect(2700, y, 700, 2); g.fillStyle = '#3a5a8a'; rr(g, 2820, 196, 460, 44, 4); g.fill(); g.fillStyle = '#e6d7bd'; g.font = 'bold 20px Georgia, serif'; g.textAlign = 'center'; g.fillText('CENTRAL PET DISTRIBUTION', 3050, 224); g.save(); g.translate(3050, 236); g.rotate(-0.04); g.fillStyle = '#243447'; rr(g, -120, -16, 240, 32, 4); g.fill(); g.fillStyle = '#f2b544'; g.font = 'bold 18px Georgia, serif'; g.fillText('PHILLIPS', 0, 7); g.fillStyle = '#c9a56a'; g.fillRect(-124, -12, 14, 8); g.fillRect(110, 6, 14, 8); g.restore(); for (let i = 0; i < 6; i++) { g.fillStyle = i % 2 ? '#c9a56a' : '#b8b0a0'; g.fillRect(2760 + i * 90, gy - 36, 60, 36); g.fillStyle = '#243447'; g.font = 'bold 7px system-ui'; g.fillText(i % 2 ? 'PHILLIPS' : 'CENTRAL', 2790 + i * 90, gy - 16); } }
+
+WORLD_DEFS.sacramento = makeDC({
+  id: 'sacramento', name: 'West Sacramento, CA', location: 'West Sacramento, California — Phillips DC', weather: 0, hour: 18.9, hours: 42, miles: 2780,
+  far: farDelta, boss: 'crane', bossName: 'THE CRANE',
+  art: { ground: ['#c8b878', '#b8a868', '#8a7a58', '#4a3e30'], grass: '#d8c878', office: ['#e8d8b8', '#b8a888'], wall: ['#e0e0d8', '#a8a8a0'], trim: '#7a7060', rock: '#a89868', sign: 'WEST SACRAMENTO, CA', road: 'W. SACRAMENTO  ·  I-80', before: (g, gy) => drawCranes(g, gy), after: () => {} },
+  npc: { name: 'Grace', role: 'Shelter Director' }, lines: ['Grace: "Six dogs, one van, no power in the kennel. Walk them to me — slowly — and keep the Static off them."'],
+  steps: [{ type: 'escort', name: 'Rescue run: walk the shelter dogs to Grace', time: 60, n: 4 }, { type: 'deliver', name: 'Humane org order', time: 30, label: 'SHELTER' }, { type: 'boss', name: 'Boss' }],
+  hazard: 'none', encounter: ['flicker', 'ghost', 'ghost'],
+});
+WORLD_DEFS.aurora = makeDC({
+  id: 'aurora', name: 'Aurora, CO', location: 'Aurora, Colorado — Phillips DC (new, 155,250 sq ft)', weather: 3, hour: 5.4, hours: 26, miles: 1700,
+  far: farFrontRange, boss: 'gate', bossName: 'GO-LIVE GATE',
+  art: { ground: ['#e8ecf6', '#d8def0', '#6a6a70', '#3a3a44'], grass: '#c9d2e8', office: ['#e8e8ec', '#c0c4cc'], wall: ['#f0f0f4', '#c8ccd4'], trim: '#8a9098', rock: '#8a8a94', sign: 'AURORA, CO', road: 'AURORA  ·  E-470', before: (g, gy) => drawTiltUp(g, gy), after: () => {} },
+  npc: { name: 'Marcus', role: 'Move Lead' }, lines: ['Marcus: "We moved this whole DC in four days. Not losing it on night one. Hold the door."'],
+  steps: [{ type: 'deliver', name: 'First order out of the new building', time: 30, label: 'FIRST' }, { type: 'scan', name: 'Scan the new racks', time: 26, n: 3 }, { type: 'boss', name: 'Boss' }],
+  hazard: 'none', encounter: ['jitter', 'flicker', 'flicker'],
+});
+WORLD_DEFS.merge = makeDC({
+  id: 'merge', name: 'The Merge', location: 'Central Pet legacy DC — systems mid-migration', weather: 1, hour: 2.5, hours: 8, miles: 420,
+  far: bakeEastonFar, boss: 'golem', bossName: 'SCHEMA GOLEM',
+  art: { ground: ['#6f8f4a', '#5c7a3c', '#6b5a44', '#3f3529'], grass: '#7fa354', office: ['#c8c0b0', '#9a9284'], wall: ['#b8c0c8', '#8a929a'], trim: '#5e6870', rock: '#5a6a44', sign: 'MERGE  ·  CENTRAL + PHILLIPS', road: 'LEGACY DC  ·  MERGE', before: (g, gy) => drawMerge(g, gy), after: () => {} },
+  npc: { name: 'Wei', role: 'Data Migration' }, lines: ['Wei: "Two data models, one warehouse, and a thing made of both schemas walking the floor. Only people who speak both can hurt it — EDI, Salesforce, iSeries, or the Analyst."'],
+  steps: [{ type: 'scan', name: 'Map the fields: scan in posted order', time: 34, n: 3, ordered: true }, { type: 'valves', name: 'Cut over: switch the feeds in order', time: 40, n: 3 }, { type: 'boss', name: 'Boss' }],
+  hazard: 'none', encounter: ['packet', 'packet', 'ghost'],
+});
+WORLD_DEFS.merge.door.roles = ['Umesh', 'Ashwini', 'Dave', 'Jose Veliz']; WORLD_DEFS.merge.door.rolesNeeded = 2;
+const ACT3 = ['sacramento', 'aurora'];
+WORLD_DEFS.easton.driveOptions = () => [{ label: 'Taunton, MA', to: 'taunton' }].concat(restored.taunton ? [{ label: 'Spartanburg, SC', to: 'spartanburg' }] : []).concat(restored.spartanburg ? ACT2.map(id => ({ label: WORLD_DEFS[id].name + (restored[id] ? ' ✓' : ''), to: id })) : []).concat(ACT2.every(id => restored[id]) ? ACT3.map(id => ({ label: WORLD_DEFS[id].name + (restored[id] ? ' ✓' : ''), to: id })) : []).concat(ACT3.every(id => restored[id]) ? [{ label: 'The Merge' + (restored.merge ? ' ✓' : ''), to: 'merge' }] : []);
+
+/* ---------- escort: shelter dogs ---------- */
+const animals = [];
+const DOG_COLORS = ['#c98a4a', '#5a4a3a', '#e8e0d0', '#8a8a8a', '#a86a3a', '#3a3a3a'];
+function spawnAnimals(x, n) { animals.length = 0; for (let i = 0; i < n; i++) animals.push({ x: x + i * 26, y: groundYAt(x), vx: 0, vy: 0, w: 22, h: 24, facing: 1, onGround: true, wall: 0, run: 0, t: rnd(0, 5), earA: 0, moving: false, col: DOG_COLORS[i % DOG_COLORS.length], scared: 0 }); }
+function updateAnimals(dt) {
+  for (const a of animals) {
+    a.t += dt; if (a.scared > 0) a.scared -= dt;
+    const dx = player.x - a.x; const want = Math.abs(dx) > 60 ? Math.sign(dx) * Math.min(260, 60 + Math.abs(dx)) : 0;
+    a.vx += clamp(want - a.vx, -1400 * dt, 1400 * dt); if (want) a.facing = Math.sign(want);
+    if (a.onGround && a.wall && want) a.vy = -520;
+    // Static scares them backwards
+    forEnemiesNear(a.x, a.y - 12, 40, e => { if (e.d.boss) return; if (Math.abs(e.x - a.x) < 28 && a.scared <= 0) { a.scared = 1.2; a.vx = -Math.sign(e.x - a.x + 0.01) * 260; a.vy = -260; } });
+    a.vy += G * dt; if (a.vy > 900) a.vy = 900; moveBody(a, dt, 11);
+    if (arena.active) a.x = clamp(a.x, arena.x0 + 12, arena.x1 - 12);
+    a.moving = Math.abs(a.vx) > 20; if (a.moving) a.run = (a.run + dt * 5) % 1;
+    a.earA = a.scared > 0 ? -0.6 : (a.moving ? 0.2 : 0);
+  }
+}
+function drawAnimals(night) { for (const a of animals) { drawBiscuit(ctx, a, nearestLight(a.x, a.y - 14, night)); if (a.scared > 0) { ctx.fillStyle = 'rgba(16,26,46,.7)'; rr(ctx, a.x - 10, a.y - 52, 20, 14, 4); ctx.fill(); ctx.fillStyle = '#ff8a5a'; ctx.font = 'bold 9px system-ui'; ctx.textAlign = 'center'; ctx.fillText('!', a.x, a.y - 41); ctx.textAlign = 'left'; } } }
+
+/* ---------- generic step extensions ---------- */
+const _beginStepGeneric = beginStepGeneric;
+beginStepGeneric = function () {
+  const def = WORLD.def; if (!def.steps) return false;
+  const s = def.steps[stage.step]; const d = stage.door;
+  const r = _beginStepGeneric(); animals.length = 0; stage.breaches = 0;
+  if (s.type === 'escort') { spawnAnimals(d.x0 + 60, s.n); const npc = npcs.find(n => !n.hero && !n.cat); if (npc) { npc.x = d.x1 - 60; npc.y = groundYAt(npc.x); } }
+  return r;
+};
+const _updateStageGeneric = updateStageGeneric;
+updateStageGeneric = function (dt) {
+  const def = WORLD.def; if (!def.steps) return false;
+  const s = def.steps[stage.step];
+  if (s.type === 'escort') {
+    stage.stepT += dt; stage.timer -= dt; if (stage.timer <= 0) { failStage('Out of time'); return true; }
+    stage.spawnT -= dt; if (stage.spawnT <= 0) { stage.spawnT = 5; spawnGroup(player.x, ['flicker', 'jitter']); }
+    updateAnimals(dt);
+    const npc = npcs.find(n => !n.hero && !n.cat); const home = animals.filter(a => npc && Math.abs(a.x - npc.x) < 90).length;
+    stage.progress = home;
+    if (home >= animals.length) { stage.step++; grantSkill('challenge'); beginStep(); }
+    return true;
+  }
+  return _updateStageGeneric(dt);
+};
+
+/* ---------- role-locked door (The Merge) ---------- */
+const _startStage = startStage;
+startStage = function (d) {
+  if (d.roles) { const have = crewAll().filter(m => d.roles.includes(m.hero.name)).length; if (have < d.rolesNeeded) { player.x = d.x - 32; player.vx = -120; restoredBanner.t = 3.5; restoredBanner.text = 'The golem only fears people who speak both schemas: bring ' + d.rolesNeeded + ' of ' + d.roles.join(', '); return; } }
+  _startStage(d);
+};
+
+/* ---------- Act 3 bosses ---------- */
+ENEMY.crane = { hp: 240, w: 70, h: 40, speed: 0, dmg: 2, shards: 0, boss: 1, color: [255, 210, 120] };
+ENEMY.gate = { hp: 60, w: 60, h: 120, speed: 0, dmg: 0, shards: 0, boss: 1, color: [120, 255, 140] };
+ENEMY.golem = { hp: 320, w: 80, h: 110, speed: 0, dmg: 1, shards: 0, boss: 1, color: [200, 160, 255] };
+const containers = [];
+function updateAct3Boss(e, dt) {
+  e.pt -= dt; e.alpha = 1; const dx = player.x - e.x;
+  if (e.type === 'crane') { // hook rides the gantry; drops containers on a telegraphed spot; hook is targetable when lowered
+    if (!e.mode) { e.mode = 'ride'; e.pt = 1.6; e.hy = -260; e.hookX = e.x; }
+    if (e.mode === 'ride') { e.targetable = false; e.hookX += (player.x - e.hookX) * Math.min(1, dt * 2); e.hookX = clamp(e.hookX, arena.x0 + 60, arena.x1 - 60); e.hy += (-260 - e.hy) * dt * 3; if (e.pt <= 0) { e.mode = 'tell'; e.pt = 0.9; e.dropX = e.hookX; } }
+    else if (e.mode === 'tell') { e.targetable = false; if (e.pt <= 0) { e.mode = 'drop'; e.pt = 0.6; containers.push({ x: e.dropX, y: -200, vy: 0, t: 0, solid: false }); } }
+    else if (e.mode === 'drop') { if (e.pt <= 0) { e.mode = 'low'; e.pt = 3.4; } }
+    else if (e.mode === 'low') { e.targetable = true; e.hy += (-70 - e.hy) * dt * 6; if (e.pt <= 0) { e.mode = 'ride'; e.pt = 1.2; } }
+    e.x = e.hookX; e.y = WORLD.groundY + e.hy + 40;
+    for (let i = containers.length - 1; i >= 0; i--) { const c = containers[i]; c.t += dt; if (!c.solid) { c.vy += G * 1.4 * dt; c.y += c.vy * dt; const gy = groundYAt(c.x); if (c.y >= gy) { c.y = gy; c.solid = true; shake = Math.max(shake, 0.3); puff(c.x, gy, 14); if (player.inv <= 0 && player.dead <= 0 && Math.abs(player.x - c.x) < 46 && player.y > gy - 60) hurtPlayer(2, c.x + 1); SOLIDS = WORLD.def.solids().concat(containers.filter(k => k.solid).map(k => [k.x - 40, k.y - 48, 80, 48, 0])); } } else if (c.t > 9) { containers.splice(i, 1); SOLIDS = WORLD.def.solids().concat(containers.filter(k => k.solid).map(k => [k.x - 40, k.y - 48, 80, 48, 0])); } }
+    const q = Math.ceil(e.hp / e.maxHp * 4); if (q < e.lastQuarter) { e.lastQuarter = q; for (let i = 0; i < 2; i++) { const f = spawnEnemy('ghost', e.x + rnd(-60, 60), groundYAt(e.x)); if (f) waveState.alive++; } }
+    if (e.targetable && player.inv <= 0 && player.dead <= 0 && Math.abs(e.x - player.x) < 36 && player.y > e.y - 20 && player.y - player.h < e.y + 20 && player.dashT <= 0) hurtPlayer(1, e.x);
+  }
+  if (e.type === 'gate') { // hold the door: Static march at the gate; breaches cost gate HP; survive the clock
+    e.targetable = false; if (!e.mode) { e.mode = 'hold'; e.clock = 55; e.spawnT = 1; e.x = arena.x1 - 60; }
+    e.y = groundYAt(e.x); e.clock -= dt; e.spawnT -= dt;
+    if (e.spawnT <= 0) { e.spawnT = clamp(2.6 - (55 - e.clock) * 0.03, 1.1, 2.6); const kinds = ['flicker', 'flicker', 'jitter', 'packet', 'lag', 'firewall']; const t = kinds[(Math.random() * Math.min(kinds.length, 2 + ((55 - e.clock) / 10 | 0))) | 0]; const sx = arena.x0 + 30; const f = spawnEnemy(t, sx, groundYAt(sx) - 2); if (f) { f.goalX = e.x - 20; waveState.alive++; waveState.rifts.push({ x: sx, y: f.y - 20, t: 0, c: f.d.color }); } }
+    for (const f of enemies) if (f.goalX !== undefined && !f.dead && Math.abs(f.x - f.goalX) < 26) { f.dead = true; waveState.alive--; e.hp -= 12; stage.breaches = (stage.breaches || 0) + 1; shake = Math.max(shake, 0.2); spark(e.x, e.y - 60, [255, 90, 90], 10); }
+    if (e.hp <= 0) { failStage('The gate fell'); return; }
+    if (e.clock <= 0) { e.hp = 0; e.dead = true; killEnemy(e); }
+  }
+  if (e.type === 'golem') { // slow stomper; only the schema-speakers' weapons hurt it
+    e.targetable = true; if (!e.mode) { e.mode = 'walk'; e.pt = 2.2; }
+    if (e.mode === 'walk') { e.vx += clamp(Math.sign(dx) * 70 - e.vx, -300 * dt, 300 * dt); e.facing = Math.sign(dx) || e.facing; if (e.pt <= 0) { e.mode = 'stomp'; e.pt = 1.1; e.vx = 0; } }
+    else { if (e.pt < 0.5 && !e.stomped) { e.stomped = true; shake = Math.max(shake, 0.25); summons.push({ k: 'slam', x: e.x, y: e.y, R: 220, t: 0, life: 0.6, c: [200, 160, 255] }); if (player.onGround && player.inv <= 0 && player.dead <= 0 && Math.abs(player.x - e.x) < 220) hurtPlayer(1, e.x); } if (e.pt <= 0) { e.mode = 'walk'; e.pt = 2.4; e.stomped = false; } }
+    const q = Math.ceil(e.hp / e.maxHp * 4); if (q < e.lastQuarter) { e.lastQuarter = q; for (let i = 0; i < 2; i++) { const f = spawnEnemy('packet', e.x + rnd(-60, 60), e.y); if (f) { f.vy = -350; waveState.alive++; } } }
+    e.vy += G * dt; if (e.vy > 900) e.vy = 900; moveBody(e, dt, e.w / 2); e.x = clamp(e.x, arena.x0 + e.w / 2, arena.x1 - e.w / 2);
+    if (player.inv <= 0 && player.dead <= 0) { const ox = Math.abs(e.x - player.x) < (e.w + player.w) / 2 - 6, oy = player.y > e.y - e.h && player.y - player.h < e.y; if (ox && oy && player.dashT <= 0) hurtPlayer(1, e.x); }
+  }
+}
+// golem damage gate: only role heroes' shots count
+const _damageEnemy = damageEnemy;
+damageEnemy = function (e, dmg, fromX, src) {
+  if (e.type === 'golem' && !WORLD_DEFS.merge.door.roles.includes(shooterName)) { spark(e.x, e.y - e.h / 2, [120, 120, 140], 2); e.hit = 0.05; return false; }
+  return _damageEnemy(e, dmg, fromX, src);
+};
+function drawAct3Boss(c, e) {
+  c.save(); c.translate(e.x, e.y);
+  glitchDraw(c, e, (g, tint) => {
+    const base = tint ? rgb(tint) : '#1c2230', edge = tint ? rgb(tint) : (e.hit > 0 ? '#fff' : rgb(e.d.color));
+    g.fillStyle = base; g.strokeStyle = edge; g.lineWidth = 2;
+    if (e.type === 'crane') { g.strokeStyle = tint ? edge : '#c8c8d0'; g.lineWidth = 3; g.beginPath(); g.moveTo(0, -H); g.lineTo(0, -30); g.stroke(); g.fillStyle = base; g.strokeStyle = edge; g.lineWidth = 2; rr(g, -16, -32, 32, 26, 4); g.fill(); g.stroke(); g.beginPath(); g.moveTo(-14, -6); g.quadraticCurveTo(0, 30, 14, -6); g.lineWidth = 6; g.stroke(); if (!tint) { g.fillStyle = e.mode === 'low' ? '#7fe0a0' : e.mode === 'tell' ? '#ff5a5a' : edge; g.fillRect(-4, -26, 8, 8); } }
+    if (e.type === 'gate') { g.fillStyle = tint ? base : '#243447'; rr(g, -30, -120, 60, 120, 6); g.fill(); g.stroke(); if (!tint) { for (let k = 0; k < 6; k++) { g.fillStyle = k < Math.round(6 * e.hp / e.maxHp) ? '#7fe0a0' : '#3a4048'; g.fillRect(-22, -110 + k * 18, 44, 12); } g.fillStyle = '#f2b544'; g.font = 'bold 9px system-ui'; g.textAlign = 'center'; g.fillText('GO LIVE', 0, -126); g.fillStyle = '#fff'; g.font = 'bold 12px monospace'; g.fillText(Math.max(0, Math.ceil(e.clock || 0)) + 's', 0, -136); } }
+    if (e.type === 'golem') { g.scale(e.facing, 1); g.fillStyle = tint ? base : '#3a3a5a'; rr(g, -30, -110, 60, 70, 10); g.fill(); g.stroke(); rr(g, -22, -40, 18, 40, 5); g.fill(); g.stroke(); rr(g, 4, -40, 18, 40, 5); g.fill(); g.stroke(); rr(g, -40, -100, 12, 50, 5); g.fill(); g.stroke(); rr(g, 28, -100, 12, 50, 5); g.fill(); g.stroke(); if (!tint) { g.fillStyle = '#c9a56a'; g.font = 'bold 7px monospace'; g.textAlign = 'center'; for (let k = 0; k < 4; k++) g.fillText(k % 2 ? 'ODHED' : 'ORDER__C', 0, -96 + k * 14); g.fillStyle = e.mode === 'stomp' ? '#ff5a5a' : edge; g.fillRect(-10, -104, 6, 6); g.fillRect(4, -104, 6, 6); } }
+  });
+  c.restore();
+}
+function drawContainers() { for (const c of containers) { ctx.save(); ctx.translate(c.x, c.y); if (!c.solid) { ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(0, groundYAt(c.x) - c.y, 40, 6, 0, 0, Math.PI * 2); ctx.fill(); } ctx.fillStyle = '#c0392b'; rr(ctx, -40, -48, 80, 48, 3); ctx.fill(); ctx.fillStyle = 'rgba(0,0,0,.15)'; for (let x = -36; x < 40; x += 8) ctx.fillRect(x, -46, 2, 44); ctx.fillStyle = '#fff'; ctx.font = 'bold 8px system-ui'; ctx.textAlign = 'center'; ctx.fillText('PHILLIPS', 0, -20); ctx.restore(); } ctx.textAlign = 'left'; }
 bakeShared();
 player.hero = hero;
 loadWorld('easton');
