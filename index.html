@@ -803,6 +803,7 @@ function render() {
   drawValves();
   drawForklift(ctx, night);
   drawCrew(night);
+  drawEveryone(night);
   drawAnimals(night);
   drawContainers();
   drawCats();
@@ -887,6 +888,7 @@ function render() {
   drawCombatHUD();
   drawCrewHUD();
   drawForkliftHUD();
+  drawEnding();
   if (catnip.n > 0) { ctx.font = 'bold 11px system-ui, sans-serif'; ctx.fillStyle = 'rgba(16,26,46,.55)'; rr(ctx, 14, H - 110, 130, 24, 8); ctx.fill(); ctx.fillStyle = '#d8ff4a'; ctx.fillText('MEOWIJUANA ×' + catnip.n + '  ·  X', 24, H - 94); }
 }
 
@@ -946,7 +948,7 @@ function frame(ts) {
 /* ---------------- title wiring ---------------- */
 function startGame(idx) {
   hero = ROSTER[idx]; player.hero = hero;
-  crew.length = 0; for (const k in SKILL) delete SKILL[k]; restored.taunton = false; restored.spartanburg = false; catnip.n = 0; catnip.active = 0; story.weaponsOnline = false; story.turnDone = false; story.visited = {}; story.met.clear(); bucks.n = 0;
+  crew.length = 0; for (const k in SKILL) delete SKILL[k]; restored.taunton = false; restored.spartanburg = false; for (const k of Object.keys(restored)) restored[k] = false; story.cutoverKey = false; story.ending = 0; ending.active = false; catnip.n = 0; catnip.active = 0; story.weaponsOnline = false; story.turnDone = false; story.visited = {}; story.met.clear(); bucks.n = 0;
   loadWorld('easton');
   document.getElementById('title').classList.add('hidden');
   running = true; last = 0;
@@ -1279,7 +1281,7 @@ function updateCombat(dt) {
   if (edge.nip) throwCatnip();
   updateCatnip(dt);
   updateBossProjs(dt);
-  updateCrew(dt);
+  updateCrew(dt); updateEveryone(dt); updateEnding(dt);
   if (player.dead <= 0 && !forklift.mounted) updateShooter(player, dt, true);
   if (packUI.banner > 0) packUI.banner -= dt;
   if (player.recoil > 0) player.recoil -= dt;
@@ -1735,7 +1737,7 @@ function loadWorld(id, spawnAt) {
   waveState.alive = 0; waveState.n = 0; waveState.toSpawn = 0; waveState.cd = 3; waveState.paused = true; waveState.rifts.length = 0; waveState.banner = 0;
   arena.active = false; arena.boss = null; stage.active = false; stage.door = null;
   npcs.length = 0; packages.length = 0; scanTargets.length = 0; encounters.length = 0; talk.open = false; player.carry = null;
-  forklift.present = false; forklift.mounted = false; liftPallets.length = 0; catnip.active = 0; bossProjs.length = 0; valves.length = 0; hazard.windT = 0; containers.length = 0; animals.length = 0;
+  forklift.present = false; forklift.mounted = false; liftPallets.length = 0; catnip.active = 0; bossProjs.length = 0; valves.length = 0; hazard.windT = 0; containers.length = 0; animals.length = 0; finale.active = false; finale.everyone.length = 0; finale.phase = 0;
   const sp = spawnAt || def.spawn;
   player.x = sp.x; player.y = sp.y; player.vx = 0; player.vy = 0; player.dead = 0; player.inv = 0.6;
   dog.x = sp.x - 60; dog.y = sp.y; dog.vx = 0; dog.vy = 0;
@@ -1814,7 +1816,7 @@ function updateDoors(dt) {
 function startStage(d) {
   stage.active = true; stage.door = d; stage.step = 0; stage.t = 0; stage.fails = 0;
   arena.active = true; arena.x0 = d.x0; arena.x1 = d.x1; arena.door = d; arena.boss = null;
-  player.x = d.x0 + 40; player.vx = 0; player.carry = null; for (const f of crew) { f.x = player.x - 20 - 20 * Math.random(); f.y = player.y; }
+  player.x = d.x0 + 40; player.y = groundYAt(player.x); player.vy = 0; player.vx = 0; player.carry = null; for (const f of crew) { f.x = player.x - 20 - 20 * Math.random(); f.y = player.y; f.vy = 0; }
   beginStep();
 }
 function clearStageEnemies() { for (let i = enemies.length - 1; i >= 0; i--) { enemies[i].dead = true; enemies.splice(i, 1); } waveState.alive = 0; projs.length = 0; summons.length = 0; beams.length = 0; }
@@ -1830,8 +1832,8 @@ function beginStep() {
 }
 function failStage(reason) {
   stage.fails++; stage.step = 0;
-  player.x = stage.door.x0 + 40; player.vx = 0; player.vy = 0; player.hp = player.maxHp; player.inv = 1.5; player.dead = 0; player.carry = null;
-  for (const f of crew) { f.x = player.x - 20; f.y = player.y; f.vx = 0; }
+  player.x = stage.door.x0 + 40; player.y = groundYAt(player.x); player.vx = 0; player.vy = 0; player.hp = player.maxHp; player.inv = 1.5; player.dead = 0; player.carry = null;
+  for (const f of crew) { f.x = player.x - 20; f.y = player.y; f.vx = 0; f.vy = 0; }
   beginStep();
   restoredBanner.t = 3.5; restoredBanner.text = reason + '  ·  stage restarts from the top';
 }
@@ -1980,6 +1982,7 @@ function updateBoss(e, dt) {
   if (e.type === 'peachpit') { updatePeachPit(e, dt); return; }
   if (ENEMY[e.type] && ['drainpipe', 'snowdrift', 'gale', 'hydra'].includes(e.type)) { updateAct2Boss(e, dt); return; }
   if (['crane', 'gate', 'golem'].includes(e.type)) { updateAct3Boss(e, dt); return; }
+  if (e.type === 'queen') { updateQueen(e, dt); return; }
   const dx = player.x - e.x;
   if (e.type === 'fogserver') {
     e.pt -= dt;
@@ -2006,6 +2009,7 @@ function drawBoss(c, e) {
   if (e.type === 'peachpit') { drawPeachPit(c, e); return; }
   if (['drainpipe', 'snowdrift', 'gale', 'hydra'].includes(e.type)) { drawAct2Boss(c, e); return; }
   if (['crane', 'gate', 'golem'].includes(e.type)) { drawAct3Boss(c, e); return; }
+  if (e.type === 'queen') { drawQueen(c, e); return; }
   c.save(); c.translate(e.x, e.y); c.globalAlpha = e.alpha; c.scale(e.facing, 1);
   const w = e.w, h = e.h, tell = e.phase === 'tell';
   glitchDraw(c, e, (g, tint) => {
@@ -2261,7 +2265,7 @@ function updateBossProjs(dt) {
     if (player.inv <= 0 && player.dead <= 0 && Math.abs(p.x - player.x) < 16 && p.y > player.y - player.h && p.y < player.y) { hurtPlayer(1, p.x); bossProjs.splice(i, 1); continue; }
     if (p.y >= groundYAt(p.x) || p.t > 4) { for (let k = 0; k < 5; k++) spawn({ k: 'spark', x: p.x, y: p.y, vx: rnd(-120, 120), vy: rnd(-160, 0), life: 0.4, t: 0, c: [255, 170, 110] }); bossProjs.splice(i, 1); } }
 }
-function drawBossProjs() { for (const p of bossProjs) { if (p.water) { ctx.fillStyle = 'rgba(120,200,255,.85)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, 7, 5, Math.atan2(p.vy, p.vx), 0, Math.PI * 2); ctx.fill(); continue; } ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.t * 8); ctx.fillStyle = '#f28c5a'; ctx.beginPath(); ctx.arc(0, 0, p.r, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#e06a3a'; ctx.beginPath(); ctx.arc(2, 2, p.r * 0.5, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#5b8e49'; ctx.beginPath(); ctx.ellipse(-3, -p.r, 4, 2, -0.6, 0, Math.PI * 2); ctx.fill(); ctx.restore(); } }
+function drawBossProjs() { for (const p of bossProjs) { if (p.glitch) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = 'rgba(255,150,60,.9)'; ctx.fillRect(p.x - 6 + Math.sin(p.t * 40) * 3, p.y - 4, 12, 8); ctx.fillStyle = 'rgba(60,220,255,.6)'; ctx.fillRect(p.x - 6 - Math.sin(p.t * 40) * 3, p.y - 2, 12, 4); ctx.restore(); continue; } if (p.water) { ctx.fillStyle = 'rgba(120,200,255,.85)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, 7, 5, Math.atan2(p.vy, p.vx), 0, Math.PI * 2); ctx.fill(); continue; } ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.t * 8); ctx.fillStyle = '#f28c5a'; ctx.beginPath(); ctx.arc(0, 0, p.r, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#e06a3a'; ctx.beginPath(); ctx.arc(2, 2, p.r * 0.5, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#5b8e49'; ctx.beginPath(); ctx.ellipse(-3, -p.r, 4, 2, -0.6, 0, Math.PI * 2); ctx.fill(); ctx.restore(); } }
 function drawPeachPit(c, e) {
   c.save(); c.translate(e.x, e.y);
   const w = e.w, h = e.h, dizzy = e.phase === 'dizzy', wind = e.phase === 'wind';
@@ -2679,6 +2683,110 @@ function drawAct3Boss(c, e) {
   c.restore();
 }
 function drawContainers() { for (const c of containers) { ctx.save(); ctx.translate(c.x, c.y); if (!c.solid) { ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(0, groundYAt(c.x) - c.y, 40, 6, 0, 0, Math.PI * 2); ctx.fill(); } ctx.fillStyle = '#c0392b'; rr(ctx, -40, -48, 80, 48, 3); ctx.fill(); ctx.fillStyle = 'rgba(0,0,0,.15)'; for (let x = -36; x < 40; x += 8) ctx.fillRect(x, -46, 2, 44); ctx.fillStyle = '#fff'; ctx.font = 'bold 8px system-ui'; ctx.textAlign = 'center'; ctx.fillText('PHILLIPS', 0, -20); ctx.restore(); } ctx.textAlign = 'left'; }
+
+/* =====================================================================
+   FINALE — Easton, 11:59. The Warehouse Beetle Queen. (M8)
+   ===================================================================== */
+restored.easton = false;
+story.ending = 0; // 0 none, 1 rolling
+const finale = { active: false, everyone: [], phase: 0 };
+const EASTON_DOOR = { x: 1640, x0: 1700, x1: 2440, boss: 'queen', name: 'BEETLE QUEEN', minCrew: 1, key: true };
+
+function setupFinaleDoor() {
+  if (!story.cutoverKey || restored.easton) return;
+  WORLD_DEFS.easton.door = EASTON_DOOR; EASTON_DOOR.t = 0;
+  setObjectives([{ text: '11:59 PM  ·  the nest is in the home warehouse. Bring the Cutover Key to the dock door.', check: () => stage.active }, { text: 'Kill the Queen before the site goes live', check: () => restored.easton }]);
+  hour = 23.92; timeAuto = false; weather = 0;
+}
+WORLD_DEFS.easton.steps = [{ type: 'deliver', name: 'One last order out the door', time: 40, label: 'GO LIVE' }, { type: 'scan', name: 'Verify the cutover', time: 30, n: 3 }, { type: 'boss', name: 'Boss' }];
+const _setupEaston = setupEaston;
+setupEaston = function () { WORLD_DEFS.easton.door = null; _setupEaston(); setupFinaleDoor(); };
+WORLD_DEFS.easton.setup = setupEaston;
+
+// when the finale stage starts, everyone on call joins the field as independent fighters
+const _startStage2 = startStage;
+startStage = function (d) {
+  _startStage2(d);
+  if (!stage.active || d !== EASTON_DOOR) return;
+  finale.active = true; finale.everyone.length = 0;
+  for (const n of npcs.slice()) { if (!n.hero) continue; finale.everyone.push({ hero: n.hero, x: d.x0 + 60 + finale.everyone.length * 40, y: groundYAt(d.x0 + 60), vx: 0, vy: 0, w: 22, h: 52, facing: 1, onGround: true, wall: 0, run: 0, t: rnd(0, 5), moving: false, wcd: rnd(0, 0.8), state: 'idle', wander: 0, extra: true }); npcs.splice(npcs.indexOf(n), 1); }
+  restoredBanner.t = 4; restoredBanner.text = 'EVERYONE\'S HERE  ·  ' + (finale.everyone.length + crewAll().length) + ' on the floor';
+};
+const _failStage = failStage;
+failStage = function (reason) { const was = finale.active; _failStage(reason); if (was) { for (const f of finale.everyone) { f.x = stage.door.x0 + 60 + rnd(0, 200); f.y = groundYAt(f.x); f.vx = 0; } } };
+function updateEveryone(dt) { if (!finale.active) return; for (const f of finale.everyone) { updateCrewMember(f, dt); if (player.dead <= 0) updateShooter(f, dt, false); } }
+function drawEveryone(night) { if (!finale.active) return; for (const f of finale.everyone) { drawHero(ctx, f.hero, f.x, f.y, f.facing, { t: f.t, run: f.run, moving: f.moving, air: !f.onGround }, nearestLight(f.x, f.y - 30, night)); drawShooterExtras(f, weaponOf(f.hero)); } }
+
+/* ---------- the Queen ---------- */
+ENEMY.queen = { hp: 900, w: 180, h: 110, speed: 0, dmg: 2, shards: 0, boss: 1, color: [255, 150, 60], beetle: 1 };
+function updateQueen(e, dt) {
+  e.pt -= dt; e.alpha = 1; const dx = player.x - e.x;
+  const phase = e.hp > e.maxHp * 0.66 ? 1 : e.hp > e.maxHp * 0.33 ? 2 : 3;
+  if (phase !== finale.phase) { finale.phase = phase; restoredBanner.t = 3; restoredBanner.text = phase === 2 ? 'SHE\'S CLIMBING THE RACKS' : phase === 3 ? 'SHE\'S IN THE DOCK  ·  everything you\'ve got' : 'THE QUEEN'; shake = Math.max(shake, 0.4); if (phase === 2) for (let i = 0; i < 4; i++) { const f = spawnEnemy('beetle', arena.x0 + 100 + i * 220, groundYAt(arena.x0)); if (f) waveState.alive++; } }
+  if (!e.mode) { e.mode = 'stalk'; e.pt = 2; e.facing = 1; }
+  const spd = phase === 3 ? 1.4 : phase === 2 ? 1.15 : 1;
+  if (e.mode === 'stalk') { e.targetable = true; e.vx += clamp(Math.sign(dx) * 60 * spd - e.vx, -300 * dt, 300 * dt); e.facing = Math.sign(dx) || e.facing; if (e.pt <= 0) { const r = Math.random(); e.mode = r < 0.4 ? 'roll' : r < 0.75 ? 'charge' : 'spit'; e.pt = e.mode === 'roll' ? 1.2 : e.mode === 'charge' ? 0.8 : 1.6; e.spat = 0; } }
+  else if (e.mode === 'roll') { e.targetable = true; if (e.pt < 0.9 && !e.rolled) { e.rolled = true; for (let k = -1; k <= 1; k += 2) { const f = spawnEnemy('lag', e.x + k * 100, e.y); if (f) { f.vx = k * 380; f.vy = -200; f.hp = 6; waveState.alive++; } } shake = Math.max(shake, 0.15); } if (e.pt <= 0) { e.mode = 'stalk'; e.pt = 1.6 / spd; e.rolled = false; } }
+  else if (e.mode === 'charge') { e.targetable = false; if (e.pt > 0.3) { e.vx *= 0.8; } else { e.vx = e.facing * 560 * spd; } if (e.wall || e.pt < -0.7) { e.mode = 'stun'; e.pt = 1.8; e.vx = 0; shake = Math.max(shake, 0.35); puff(e.x + e.facing * 80, e.y, 16); } }
+  else if (e.mode === 'stun') { e.targetable = true; e.weak = 0.2; if (e.pt <= 0) { e.mode = 'stalk'; e.pt = 1.4 / spd; } }
+  else if (e.mode === 'spit') { e.targetable = true; if (e.spat < 3 + phase && e.pt < 1.4 - e.spat * 0.3) { e.spat++; const T = 0.9; bossProjs.push({ x: e.x + e.facing * 70, y: e.y - 70, vx: dx / T + rnd(-90, 90), vy: -0.5 * G * T - 40, t: 0, r: 7, water: 0, glitch: 1 }); } if (e.pt <= 0) { e.mode = 'stalk'; e.pt = 1.2 / spd; } }
+  e.vy += G * dt; if (e.vy > 900) e.vy = 900; moveBody(e, dt, e.w / 2); e.x = clamp(e.x, arena.x0 + e.w / 2, arena.x1 - e.w / 2);
+  if (player.inv <= 0 && player.dead <= 0) { const ox = Math.abs(e.x - player.x) < (e.w + player.w) / 2 - 10, oy = player.y > e.y - e.h && player.y - player.h < e.y; if (ox && oy && player.dashT <= 0) hurtPlayer(e.mode === 'charge' ? 2 : 1, e.x); }
+  if (Math.random() < dt * 6) spawn({ k: 'glitch', x: e.x + rnd(-80, 80), y: e.y - rnd(0, 100), vx: rnd(-40, 40), vy: rnd(-60, 0), life: 0.5, t: 0, c: e.d.color });
+}
+function drawQueen(c, e) {
+  c.save(); c.translate(e.x, e.y); c.scale(e.facing, 1);
+  const w = e.w, h = e.h, stun = e.mode === 'stun', charge = e.mode === 'charge';
+  glitchDraw(c, e, (g, tint) => {
+    const base = tint ? rgb(tint) : '#2a1a10', edge = tint ? rgb(tint) : (e.hit > 0 ? '#fff' : rgb(e.d.color));
+    // legs
+    g.strokeStyle = edge; g.lineWidth = 4; for (let k = 0; k < 4; k++) { const la = Math.sin(e.t * 12 + k * 1.5) * 8; g.beginPath(); g.moveTo(-w * 0.35 + k * w * 0.22, -20); g.lineTo(-w * 0.35 + k * w * 0.22 - 16 + la, 0); g.stroke(); }
+    // shell — old monitors and shrink wrap
+    g.fillStyle = base; g.beginPath(); g.ellipse(0, -h / 2, w / 2, h / 2, 0, 0, Math.PI * 2); g.fill(); g.strokeStyle = edge; g.lineWidth = 3; g.stroke();
+    if (!tint) { g.strokeStyle = 'rgba(255,150,60,.5)'; g.lineWidth = 2; g.beginPath(); g.moveTo(0, -h); g.lineTo(0, 0); g.stroke(); for (const k of [-0.33, 0.33]) { g.beginPath(); g.moveTo(k * w, -h * 0.92); g.lineTo(k * w, -h * 0.08); g.stroke(); }
+      for (const [mx, my] of [[-50, -70], [10, -84], [50, -60]]) { g.fillStyle = '#d8d0c0'; rr(g, mx - 16, my - 12, 32, 26, 3); g.fill(); g.fillStyle = '#7fe0a0'; g.fillRect(mx - 13, my - 9, 26, 17); g.fillStyle = '#142014'; g.font = 'bold 6px monospace'; g.textAlign = 'left'; g.fillText('OK', mx - 11, my); g.fillText('OK', mx - 11, my + 6); }
+      g.strokeStyle = 'rgba(220,240,255,.45)'; g.lineWidth = 2; for (let k = 0; k < 6; k++) { g.beginPath(); g.moveTo(-w / 2 + 10, -h * 0.2 - k * 14); g.lineTo(w / 2 - 10, -h * 0.35 - k * 14); g.stroke(); } }
+    // head + mandibles
+    g.fillStyle = tint ? base : '#1c1208'; g.beginPath(); g.arc(w / 2 + 12, -h / 2, 26, 0, Math.PI * 2); g.fill(); g.strokeStyle = edge; g.lineWidth = 3; g.stroke();
+    g.beginPath(); g.moveTo(w / 2 + 30, -h / 2 - 14); g.lineTo(w / 2 + 64, -h / 2 - 30); g.moveTo(w / 2 + 30, -h / 2 + 14); g.lineTo(w / 2 + 64, -h / 2 + 30); g.lineWidth = 5; g.stroke();
+    if (!tint) { g.fillStyle = charge ? '#fff' : stun ? '#7fe0a0' : edge; g.fillRect(w / 2 + 18, -h / 2 - 10, 8, 8); g.fillRect(w / 2 + 18, -h / 2 + 2, 8, 8); if (stun) { g.fillStyle = '#fff'; g.font = 'bold 14px Georgia'; g.textAlign = 'center'; for (let k = 0; k < 3; k++) g.fillText('✦', w / 2 + 12 + Math.cos(e.t * 6 + k * 2.1) * 30, -h / 2 - 40 + Math.sin(e.t * 6 + k * 2.1) * 8); } }
+  });
+  c.restore();
+}
+
+/* ---------- ending ---------- */
+const ending = { t: 0, active: false };
+function startEnding() { ending.active = true; ending.t = 0; hour = 0.0; timeAuto = true; weather = 0; }
+function updateEnding(dt) { if (!ending.active) return; ending.t += dt; if (ending.t > 34 && (edge.jump || edge.use)) { ending.active = false; restoredBanner.t = 3; restoredBanner.text = 'Thanks for playing  ·  keep exploring the network'; } }
+function drawEnding() {
+  if (!ending.active) return; const t = ending.t;
+  const a = clamp(t / 1.5, 0, 1) * (t > 32 ? clamp(1 - (t - 32) / 2, 0, 1) : 1);
+  ctx.fillStyle = rgba([16, 26, 46], 0.55 * a); ctx.fillRect(0, 0, W, H);
+  ctx.textAlign = 'center';
+  const lines = [
+    [0, 'GO LIVE — OK', 'bold 40px Georgia, serif', '#7fe0a0'],
+    [2.5, '12:00 AM  ·  the new site is live', 'italic 16px Georgia, serif', '#f6ecd8'],
+    [5, 'Every DC is back on the network.', '14px system-ui, sans-serif', '#b9c5d6'],
+    [8, 'Easton · Taunton · Spartanburg · Plant City · Lansing · Billings · Portland · West Sacramento · Aurora', '12px system-ui, sans-serif', '#b9c5d6'],
+    [11, 'Founded in 1938 as a single feed store,', '14px system-ui, sans-serif', '#f6ecd8'],
+    [12.5, 'on one promise: show up for the people who count on you.', '14px system-ui, sans-serif', '#f6ecd8'],
+    [16, 'The trucks roll at dawn.', 'italic 18px Georgia, serif', '#f2b544'],
+    [20, 'HECKTOWN ROAD', 'bold 34px Georgia, serif', '#f2b544'],
+    [22, 'the Phillips IT team', '13px system-ui, sans-serif', '#b9c5d6'],
+    [23, ROSTER.map(r => r.name).join('  ·  '), '11px system-ui, sans-serif', '#b9c5d6'],
+    [26, 'Biscuit, as himself.   Milo, allegedly.', '12px system-ui, sans-serif', '#b9c5d6'],
+    [29, 'Any resemblance to actual batch jobs is unfortunately intentional.', 'italic 11px Georgia, serif', '#8f9db3'],
+    [32, 'press jump to keep playing', '12px system-ui, sans-serif', '#f6ecd8'],
+  ];
+  let y = 120;
+  for (const [at, txt, font, col] of lines) { if (t < at) break; const la = clamp((t - at) / 1.2, 0, 1) * a; ctx.font = font; ctx.fillStyle = rgba(hex(col), la); ctx.fillText(txt, W / 2, y); y += parseInt(font.match(/(\d+)px/)[1]) + 14; }
+  ctx.textAlign = 'left';
+}
+const _onBossDead = onBossDead;
+onBossDead = function (e) {
+  _onBossDead(e);
+  if (e.type === 'queen') { finale.active = false; for (const f of finale.everyone) addNPC({ hero: f.hero, look: f.hero, x: f.x, y: groundYAt(f.x), facing: f.facing, onTalk: teammateTalk }); finale.everyone.length = 0; story.ending = 1; startEnding(); setObjectives([{ text: 'The site is live. Keep exploring the network, or take the team to the Buying Show.', check: () => false }]); }
+};
 bakeShared();
 player.hero = hero;
 loadWorld('easton');
