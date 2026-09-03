@@ -1074,7 +1074,7 @@ const WAVE_TABLE = [
   ['packet', 'packet', 'lag', 'lag', 'firewall', 'jitter', 'jitter', 'flicker'],
   ['beetle', 'flicker', 'flicker', 'flicker', 'ghost', 'packet'],
 ];
-function waveList(n) { const base = WAVE_TABLE[Math.min(n, WAVE_TABLE.length - 1)].slice(); const extra = Math.max(0, n - WAVE_TABLE.length + 1); for (let i = 0; i < extra * 2; i++) base.push(['flicker', 'jitter', 'packet', 'ghost', 'firewall', 'lag'][i % 6]); if (n >= 8 && n % 3 === 2) base.push('beetle'); return base; }
+function waveList(n) { n = Math.max(0, n); const base = WAVE_TABLE[Math.min(n, WAVE_TABLE.length - 1)].slice(); const extra = Math.max(0, n - WAVE_TABLE.length + 1); for (let i = 0; i < extra * 2; i++) base.push(['flicker', 'jitter', 'packet', 'ghost', 'firewall', 'lag'][i % 6]); if (n >= 8 && n % 3 === 2) base.push('beetle'); return base; }
 function updateWaves(dt) {
   if (waveState.toSpawn > 0) {
     waveState.cd -= dt;
@@ -1608,7 +1608,7 @@ function loadWorld(id, spawnAt) {
   { const c = mkCanvas(WORLD.width, H), g = c.getContext('2d'); def.play(g); LAYERS.play = c; }
   // clear combat state
   for (const e of enemies) e.dead = true; enemies.length = 0; projs.length = 0; beams.length = 0; summons.length = 0; shards.length = 0;
-  waveState.alive = 0; waveState.n = 0; waveState.toSpawn = 0; waveState.cd = 3; waveState.paused = false; waveState.rifts.length = 0;
+  waveState.alive = 0; waveState.n = 0; waveState.toSpawn = 0; waveState.cd = 3; waveState.paused = false; waveState.rifts.length = 0; waveState.banner = 0;
   arena.active = false; arena.boss = null; assign.open = false;
   DOORS.length = 0; for (const d of def.doors) DOORS.push(Object.assign({ done: false, t: 0 }, d));
   if (restored[id]) for (const d of DOORS) d.done = true;
