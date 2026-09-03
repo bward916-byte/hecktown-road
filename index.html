@@ -25,6 +25,8 @@
   .card canvas { width: 100%; aspect-ratio: 1/1; display:block; border-radius: 8px; }
   .card .n { font-size: clamp(10px, 1.7vmin, 13px); font-weight: 700; margin-top: 4px; color:#f6ecd8; }
   .card .r { font-size: clamp(8px, 1.4vmin, 11px); color:#b9c5d6; line-height:1.15; }
+  #demoBtn { margin-top: 14px; padding: 8px 22px; font: bold 13px system-ui, -apple-system, sans-serif; letter-spacing: .12em; color:#f2b544; background: rgba(242,181,68,.08); border: 1.5px solid rgba(242,181,68,.5); border-radius: 8px; cursor:pointer; }
+  #demoBtn:hover { background: rgba(242,181,68,.2); }
   #hint { margin-top: 10px; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: clamp(10px, 1.8vmin, 13px); color:#8f9db3; }
   #rotate { display:none; position:fixed; inset:0; z-index:20; background:#101a2e; color:#f6ecd8; align-items:center; justify-content:center; text-align:center; font-family: Georgia, serif; font-size: 20px; padding: 24px; }
   @media (orientation: portrait) and (max-width: 900px) { #rotate { display:flex; } }
@@ -38,7 +40,8 @@
     <p class="sub">A Phillips Pet Adventure</p>
     <p class="promise">11:52 p.m. at Easton HQ. The new B2B site goes live at midnight and the network just went dark. Pick who's on call.</p>
     <div id="grid"></div>
-    <div id="hint">Move: arrows / A D &nbsp;•&nbsp; Jump: space / W &nbsp;•&nbsp; Dash: shift / K &nbsp;•&nbsp; Use: E &nbsp;•&nbsp; Take point: C &nbsp;•&nbsp; Weather: Q &nbsp;•&nbsp; Time: T</div>
+    <button id="demoBtn">&#9654; WATCH DEMO</button>
+    <div id="hint">Move: arrows / A D &nbsp;•&nbsp; Jump: space / W &nbsp;•&nbsp; Dash: shift / K &nbsp;•&nbsp; Use: E &nbsp;•&nbsp; Take point: C &nbsp;•&nbsp; Sound: M &nbsp;•&nbsp; Weather: Q &nbsp;•&nbsp; Time: T</div>
   </div>
 </div>
 <div id="rotate">Turn your phone sideways.<br><small style="font-family:system-ui;font-size:14px;color:#8f9db3">HECKTOWN ROAD plays in landscape.</small></div>
@@ -650,14 +653,14 @@ function updatePlayer(dt) {
   const wallSlide = !p.onGround && p.wall && dir === p.wall && p.vy > 0;
   if (wallSlide && p.vy > 140) p.vy = 140;
   if (p.buffer > 0) {
-    if (p.coyote > 0) { p.vy = p.carry ? JUMP * 0.82 : JUMP; p.coyote = 0; p.buffer = 0; p.stretch = 1.18; p.squash = 0.86; puff(p.x, p.y, 6); }
+    if (p.coyote > 0) { sfx('jump'); p.vy = p.carry ? JUMP * 0.82 : JUMP; p.coyote = 0; p.buffer = 0; p.stretch = 1.18; p.squash = 0.86; puff(p.x, p.y, 6); }
     else if (wallSlide || (!p.onGround && p.wall)) { p.vy = -640; p.vx = -p.wall * 340; p.facing = -p.wall; p.buffer = 0; p.stretch = 1.15; p.squash = 0.9; puff(p.x + p.wall * 10, p.y - 20, 5); }
   }
   // variable jump
   if (!tk.jump && p.vy < -300) p.vy = -300;
   // dash
   if (p.dashCd > 0) p.dashCd -= dt;
-  if (edge.dash && p.dashCd <= 0 && !dashing) { p.dashT = 0.16; p.dashCd = 0.55; p.vx = p.facing * DASH; p.vy = 0; p.stretch = 0.8; p.squash = 1.25; }
+  if (edge.dash && p.dashCd <= 0 && !dashing) { sfx('dash'); p.dashT = 0.16; p.dashCd = 0.55; p.vx = p.facing * DASH; p.vy = 0; p.stretch = 0.8; p.squash = 1.25; }
   if (dashing) { p.dashT -= dt; p.vy = 0; if (p.t % 0.03 < dt) trail(p.x, p.y, p.facing); if (p.dashT <= 0) p.vx = p.facing * RUN; }
   const wasGround = p.onGround;
   moveBody(p, dt, p.w / 2);
@@ -742,7 +745,8 @@ function updateCamera(dt) {
 let gameTime = 0;
 function update(dt) {
   gameTime += dt;
-  syncInput(); runTaps();
+  updateDemo(dt);
+  syncInput(); runTaps(); audioTick();
   if (edge.weather) { weather = (weather + 1) % 4; flash = 2; }
   if (edge.time) { hour = Math.round(hour / 3) * 3 + 3; timeAuto = false; flash = 2; }
   if (timeAuto) hour += dt / 15; // one hour per 15 s
@@ -801,6 +805,8 @@ function render() {
   // actors
   renderCombatBack(night);
   drawStoryLayer(night);
+  drawPrologueLayer();
+  drawLedgerPages();
   drawValves();
   drawForklift(ctx, night);
   drawCrew(night);
@@ -885,11 +891,14 @@ function render() {
   const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.5, W / 2, H / 2, H * 1.0); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(10,10,30,.28)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
   // paper grain
   ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = 0.35; ctx.drawImage(LAYERS.grain, 0, 0); ctx.restore();
+  drawSepia();
   drawHUD(night);
   drawCombatHUD();
   drawCrewHUD();
   drawForkliftHUD();
+  drawLedgerHUD();
   drawEnding();
+  drawDemoHUD();
   if (catnip.n > 0) { ctx.font = 'bold 11px system-ui, sans-serif'; ctx.fillStyle = 'rgba(16,26,46,.55)'; rr(ctx, 14, H - 110, 130, 24, 8); ctx.fill(); ctx.fillStyle = '#d8ff4a'; ctx.fillText('MEOWIJUANA ×' + catnip.n + '  ·  X', 24, H - 94); }
 }
 
@@ -947,10 +956,10 @@ function frame(ts) {
 }
 
 /* ---------------- title wiring ---------------- */
-function startGame(idx) {
-  hero = ROSTER[idx]; player.hero = hero;
+function startGame(idx, skipPrologue) {
+  hero = ROSTER[idx]; player.hero = hero; ledger.found.clear(); story.prologueDone = false; demo.active = false;
   crew.length = 0; for (const k in SKILL) delete SKILL[k]; restored.taunton = false; restored.spartanburg = false; for (const k of Object.keys(restored)) restored[k] = false; story.cutoverKey = false; story.ending = 0; ending.active = false; catnip.n = 0; catnip.active = 0; story.weaponsOnline = false; story.turnDone = false; story.visited = {}; story.met.clear(); bucks.n = 0;
-  loadWorld('easton');
+  loadWorld(skipPrologue ? 'easton' : 'prologue');
   document.getElementById('title').classList.add('hidden');
   running = true; last = 0;
   flash = 3;
@@ -966,6 +975,7 @@ function buildTitle() {
     card.addEventListener('click', () => startGame(i));
     grid.appendChild(card);
   });
+  const db = document.getElementById('demoBtn'); if (db) db.addEventListener('click', () => startDemo());
 }
 
 /* =====================================================================
@@ -1031,7 +1041,7 @@ function damageEnemy(e, dmg, fromX, src) {
   return true;
 }
 function killEnemy(e) {
-  e.dead = true;
+  e.dead = true; sfx(e.d.boss ? 'boss' : 'kill');
   if (e.d.boss) { onBossDead(e); }
   else waveState.alive--;
   for (let i = 0; i < (e.d.boss ? 60 : 10); i++) spawn({ k: 'glitch', x: e.x + rnd(-e.w / 2, e.w / 2), y: e.y - rnd(0, e.h), vx: rnd(-120, 120), vy: rnd(-160, 40), life: rnd(0.3, 0.6), t: 0, c: e.d.color });
@@ -1078,7 +1088,7 @@ function updateEnemy(e, dt) {
   }
 }
 function hurtPlayer(n, fromX) {
-  player.hp -= n; player.inv = 1.1; player.vx = Math.sign(player.x - fromX) * 260; player.vy = -280; shake = Math.max(shake, 0.25);
+  sfx('hurt'); player.hp -= n; player.inv = 1.1; player.vx = Math.sign(player.x - fromX) * 260; player.vy = -280; shake = Math.max(shake, 0.25);
   spark(player.x, player.y - 26, [255, 90, 90], 8);
   if (player.hp <= 0) { player.hp = 0; player.dead = 1.6; }
 }
@@ -1229,7 +1239,7 @@ function updateProjs(dt) {
   // shards
   for (let i = shards.length - 1; i >= 0; i--) {
     const s = shards[i]; s.t += dt;
-    if (s.t > 0.45) { const dx = player.x - s.x, dy = player.y - 26 - s.y, L = Math.hypot(dx, dy) || 1; const pull = 900 + s.t * 600; s.vx += (dx / L * pull - s.vx) * Math.min(1, dt * 6); s.vy += (dy / L * pull - s.vy) * Math.min(1, dt * 6); if (L < 22) { bucks.n += s.v; bucks.total += s.v; shards.splice(i, 1); spawn({ k: 'coin', x: player.x, y: player.y - 56, life: 0.5, t: 0, v: s.v }); continue; } }
+    if (s.t > 0.45) { const dx = player.x - s.x, dy = player.y - 26 - s.y, L = Math.hypot(dx, dy) || 1; const pull = 900 + s.t * 600; s.vx += (dx / L * pull - s.vx) * Math.min(1, dt * 6); s.vy += (dy / L * pull - s.vy) * Math.min(1, dt * 6); if (L < 22) { bucks.n += s.v; bucks.total += s.v; shards.splice(i, 1); if (gameTime - (bucks.sfxT || 0) > 0.06) { bucks.sfxT = gameTime; sfx('shard'); } spawn({ k: 'coin', x: player.x, y: player.y - 56, life: 0.5, t: 0, v: s.v }); continue; } }
     else { s.vy += G * 0.6 * dt; const gy = groundYAt(s.x); if (s.y > gy - 4) { s.y = gy - 4; s.vy *= -0.4; s.vx *= 0.8; } }
     s.x += s.vx * dt; s.y += s.vy * dt;
     if (s.t > 12) shards.splice(i, 1);
@@ -1267,6 +1277,7 @@ function updateCombat(dt) {
   updateQuest(dt);
   updatePackages(dt);
   updateEncounters(dt);
+  updatePrologue(dt);
   if (shop.open || talk.open) return;
   rebuildHash();
   updateWaves(dt);
@@ -1282,7 +1293,7 @@ function updateCombat(dt) {
   if (edge.nip) throwCatnip();
   updateCatnip(dt);
   updateBossProjs(dt);
-  updateCrew(dt); updateEveryone(dt); updateEnding(dt);
+  updateCrew(dt); updateEveryone(dt); updateEnding(dt); updateLedger(dt);
   if (player.dead <= 0 && !forklift.mounted) updateShooter(player, dt, true);
   if (packUI.banner > 0) packUI.banner -= dt;
   if (player.recoil > 0) player.recoil -= dt;
@@ -1496,7 +1507,7 @@ function updateTalk(dt) {
 function joinCrew(ch) {
   const n = npcs.find(q => q.hero === ch); if (!n || crew.length >= CREW_MAX - 1) return false;
   crew.push({ hero: ch, x: n.x, y: n.y, vx: 0, vy: 0, w: 22, h: 52, facing: n.facing || 1, onGround: true, wall: 0, run: 0, t: rnd(0, 5), moving: false, wcd: rnd(0, 0.5), state: 'idle', wander: 0 });
-  npcs.splice(npcs.indexOf(n), 1); story.met.add(ch.name);
+  npcs.splice(npcs.indexOf(n), 1); story.met.add(ch.name); sfx('join');
   banner(ch.name + ' joined your crew  ·  ' + weaponOf(ch).name, 3);
   for (let k = 0; k < 18; k++) spawn({ k: 'spark', x: n.x + rnd(-16, 16), y: n.y - rnd(0, 52), vx: rnd(-160, 160), vy: rnd(-220, 40), life: rnd(0.4, 0.8), t: 0, c: [242, 181, 68] });
   return true;
@@ -1602,7 +1613,7 @@ function updateStoryInteract() {
   if (!edge.use) return;
   if (stage.active && stage.grace && gameTime < stage.grace) return;
   if (player.carry) { const n = nearNPC(); if (n && n.acceptsPackage) { n.acceptsPackage(player.carry); packages.splice(packages.indexOf(player.carry), 1); player.carry = null; return; } }
-  const sc = nearScan(); if (sc) { sc.done = true; sc.seq = (stage.seq = (stage.seq || 0) + 1); spawn({ k: 'flash', x: sc.x, y: sc.y - 40, life: 0.3, t: 0, c: [242, 181, 68] }); banner('Scanned ' + sc.sku, 1.2); return; }
+  const sc = nearScan(); if (sc) { sfx('scan'); sc.done = true; sc.seq = (stage.seq = (stage.seq || 0) + 1); spawn({ k: 'flash', x: sc.x, y: sc.y - 40, life: 0.3, t: 0, c: [242, 181, 68] }); banner('Scanned ' + sc.sku, 1.2); return; }
   const pk = nearPackage(); if (pk && !player.carry) { pk.carried = true; player.carry = pk; }
 }
 function drawCrewHUD() {
@@ -1749,6 +1760,7 @@ function loadWorld(id, spawnAt) {
   (story.visited = story.visited || {})[id] = true;
   mode = 'world';
   if (def.setup) def.setup();
+  placeLedger();
 }
 
 /* ---------- Easton: the solo adventure ---------- */
@@ -1904,7 +1916,7 @@ function updateDrive(dt) {
   if (edge.jump && drive.hop === 0) { drive.vy = -560; drive.hop = 0.01; }
   if (drive.hop > 0) { drive.vy += 1900 * dt; drive.hop += drive.vy * dt; if (drive.hop >= 0) { drive.hop = 0; drive.vy = 0; shake = Math.max(shake, 0.08); puff(0, 0, 0); } }
   if (drive.honk > 0) drive.honk -= dt;
-  if (edge.dash && drive.honk <= 0) { drive.honk = 0.9; for (const o of drive.obs) if (o.k === 'flicker' && o.x - drive.x > 0 && o.x - drive.x < 340) o.scatter = 1; }
+  if (edge.dash && drive.honk <= 0) { drive.honk = 0.9; sfx('honk'); for (const o of drive.obs) if (o.k === 'flicker' && o.x - drive.x > 0 && o.x - drive.x < 340) o.scatter = 1; }
   // spawn obstacles ahead
   drive.next -= dt;
   if (drive.next <= 0 && drive.t < drive.dur - 3) { drive.next = rnd(0.9, 1.7) - Math.min(0.5, drive.t * 0.015); const r = Math.random(); drive.obs.push({ k: r < 0.4 ? 'flicker' : r < 0.7 ? 'pothole' : 'crate', x: drive.x + W + 120, hit: false, t: 0, scatter: 0 }); }
@@ -1975,7 +1987,7 @@ function renderDrive() {
 /* ---------- bosses ---------- */
 ENEMY.fogserver = { hp: 130, w: 84, h: 96, speed: 0, dmg: 1, shards: 0, boss: 1, color: [180, 200, 255] };
 function spawnBoss(type, x, y) {
-  const e = spawnEnemy(type, x, y); if (!e) return null;
+  const e = spawnEnemy(type, x, y); if (!e) return null; sfx('boss');
   e.born = 0; e.targetable = false; e.phase = 'hide'; e.pt = 1.2; e.alpha = 0; e.lastQuarter = 4; e.name = type; e.tx = x; return e;
 }
 function updateBoss(e, dt) {
@@ -2788,6 +2800,234 @@ onBossDead = function (e) {
   _onBossDead(e);
   if (e.type === 'queen') { finale.active = false; for (const f of finale.everyone) addNPC({ hero: f.hero, look: f.hero, x: f.x, y: groundYAt(f.x), facing: f.facing, onTalk: teammateTalk }); finale.everyone.length = 0; story.ending = 1; startEnding(); setObjectives([{ text: 'The site is live. Keep exploring the network, or take the team to the Buying Show.', check: () => false }]); }
 };
+
+/* =====================================================================
+   POLISH (M9) — 1938 prologue, Ledger, Buying Show, audio, demo
+   ===================================================================== */
+
+/* ---------- audio: everything synthesized ---------- */
+const audio = { ctx: null, on: true, master: null, pad: null, padGain: null, world: null, started: false };
+function audioInit() {
+  if (audio.started || typeof AudioContext === 'undefined' && typeof webkitAudioContext === 'undefined') return;
+  try {
+    const AC = typeof AudioContext !== 'undefined' ? AudioContext : webkitAudioContext; audio.ctx = new AC(); audio.started = true;
+    audio.master = audio.ctx.createGain(); audio.master.gain.value = 0.5; audio.master.connect(audio.ctx.destination);
+    audio.padGain = audio.ctx.createGain(); audio.padGain.gain.value = 0; audio.padGain.connect(audio.master);
+    const lp = audio.ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 600; lp.connect(audio.padGain);
+    audio.pad = []; for (const f of [55, 82.4, 110, 164.8]) { const o = audio.ctx.createOscillator(); o.type = f < 100 ? 'sawtooth' : 'triangle'; o.frequency.value = f; const g = audio.ctx.createGain(); g.gain.value = 0.06; o.connect(g); g.connect(lp); o.start(); audio.pad.push({ o, g, base: f }); }
+    // wind/rain noise bed
+    const buf = audio.ctx.createBuffer(1, audio.ctx.sampleRate * 2, audio.ctx.sampleRate); const d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.3;
+    const src = audio.ctx.createBufferSource(); src.buffer = buf; src.loop = true; const nf = audio.ctx.createBiquadFilter(); nf.type = 'bandpass'; nf.frequency.value = 900; nf.Q.value = 0.5; audio.noise = audio.ctx.createGain(); audio.noise.gain.value = 0; src.connect(nf); nf.connect(audio.noise); audio.noise.connect(audio.master); src.start();
+    audio.lp = lp;
+  } catch (e) { audio.started = false; }
+}
+function audioTick() {
+  if (!audio.started || !audio.ctx) return;
+  const t = audio.ctx.currentTime; const want = audio.on && running && mode !== 'drive' ? 0.9 : audio.on && mode === 'drive' ? 0.6 : 0;
+  audio.padGain.gain.setTargetAtTime(want, t, 0.8);
+  const noiseWant = audio.on ? (weather === 2 ? 0.35 : weather === 3 ? 0.08 : weather === 1 ? 0.12 : 0.04) + (hazard.wind ? 0.3 : 0) + (mode === 'drive' ? 0.25 : 0) : 0;
+  audio.noise.gain.setTargetAtTime(noiseWant, t, 0.6);
+  audio.lp.frequency.setTargetAtTime(stage.active ? 1400 : 600, t, 1.2);
+  // world flavor: detune the pad by region
+  const det = ({ taunton: -2, spartanburg: 3, plantcity: 5, lansing: -5, billings: 7, portland: -3, sacramento: 4, aurora: 0, merge: -7, prologue: -12, show: 5 })[WORLD.id] || 0;
+  for (const p of audio.pad) p.o.detune.setTargetAtTime(det * 100 / 12 * 12, t, 2);
+}
+function sfx(name) {
+  if (!audio.started || !audio.on || !audio.ctx) return;
+  const c = audio.ctx, t = c.currentTime; const o = c.createOscillator(), g = c.createGain(); o.connect(g); g.connect(audio.master);
+  const env = (a, dur, peak) => { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak || 0.2, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); o.start(t); o.stop(t + dur + 0.05); };
+  switch (name) {
+    case 'jump': o.type = 'square'; o.frequency.setValueAtTime(220, t); o.frequency.exponentialRampToValueAtTime(520, t + 0.12); env(0.01, 0.16, 0.12); break;
+    case 'dash': o.type = 'sawtooth'; o.frequency.setValueAtTime(700, t); o.frequency.exponentialRampToValueAtTime(140, t + 0.18); env(0.01, 0.2, 0.15); break;
+    case 'shard': o.type = 'sine'; o.frequency.setValueAtTime(1046, t); o.frequency.setValueAtTime(1568, t + 0.05); env(0.005, 0.12, 0.12); break;
+    case 'scan': o.type = 'square'; o.frequency.setValueAtTime(1760, t); o.frequency.setValueAtTime(2200, t + 0.08); env(0.005, 0.18, 0.1); break;
+    case 'hurt': o.type = 'sawtooth'; o.frequency.setValueAtTime(160, t); o.frequency.exponentialRampToValueAtTime(60, t + 0.3); env(0.01, 0.35, 0.25); break;
+    case 'kill': o.type = 'triangle'; o.frequency.setValueAtTime(400, t); o.frequency.exponentialRampToValueAtTime(90, t + 0.15); env(0.005, 0.18, 0.15); break;
+    case 'honk': o.type = 'sawtooth'; o.frequency.setValueAtTime(196, t); env(0.02, 0.5, 0.3); break;
+    case 'boss': o.type = 'sawtooth'; o.frequency.setValueAtTime(70, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.8); env(0.05, 1.0, 0.35); break;
+    case 'join': o.type = 'triangle'; o.frequency.setValueAtTime(523, t); o.frequency.setValueAtTime(659, t + 0.1); o.frequency.setValueAtTime(784, t + 0.2); env(0.01, 0.5, 0.18); break;
+    case 'page': o.type = 'sine'; o.frequency.setValueAtTime(880, t); o.frequency.setValueAtTime(1318, t + 0.12); o.frequency.setValueAtTime(1760, t + 0.24); env(0.01, 0.6, 0.15); break;
+    case 'ui': o.type = 'square'; o.frequency.setValueAtTime(880, t); env(0.005, 0.06, 0.06); break;
+    default: o.type = 'sine'; o.frequency.setValueAtTime(440, t); env(0.01, 0.1, 0.1);
+  }
+}
+window.addEventListener('keydown', e => { audioInit(); if (audio.ctx && audio.ctx.state === 'suspended') audio.ctx.resume(); if (e.code === 'KeyM') { audio.on = !audio.on; banner(audio.on ? 'Sound on' : 'Sound off', 1); } });
+window.addEventListener('touchstart', () => { audioInit(); if (audio.ctx && audio.ctx.state === 'suspended') audio.ctx.resume(); }, { passive: true });
+window.addEventListener('pointerdown', () => { audioInit(); if (audio.ctx && audio.ctx.state === 'suspended') audio.ctx.resume(); });
+
+/* ---------- Ledger pages ---------- */
+const LEDGER = [
+  ['1938', 'A single feed store on a county road. One counter, one scale, one promise.'],
+  ['1941', 'The first truck. A flatbed that started on the third try, every morning.'],
+  ['1946', 'The founder\'s rule, written on the wall: "If you said you\'d be there, be there."'],
+  ['1952', 'First dog food on the shelf, next to the chicken feed. Nobody thought it would sell.'],
+  ['1958', 'Second store. The sign was hand-painted by a cousin. Slightly crooked. Kept anyway.'],
+  ['1964', 'A customer\'s barn burned. The feed was delivered the next morning, no invoice.'],
+  ['1971', 'First warehouse. Pallets instead of stacks. Everyone learned to drive a forklift.'],
+  ['1979', 'Cat litter, aquariums, birdseed. The feed store became a pet store\'s best friend.'],
+  ['1985', 'First computer. Green screen. The batch job that still runs at midnight was written that year.'],
+  ['1991', 'A second warehouse, a second state. The trucks started crossing rivers.'],
+  ['1997', 'The founder retired to the loading dock, where he "supervised" for another decade.'],
+  ['2003', 'Barcode scanners. The pickers said they\'d never use them. Now they name them.'],
+  ['2009', 'The recession. Nobody laid off. The trucks ran shorter routes and everybody rode along.'],
+  ['2014', 'Ten distribution centers. A map on the wall with pins, and someone kept moving the pins.'],
+  ['2019', 'The website. The first order came from a shop three states away at 2 a.m.'],
+  ['2021', 'A pandemic and a merger that didn\'t happen. The trucks kept rolling anyway.'],
+  ['2026', 'A joint venture, a new CEO, a new site going live at midnight. Same promise.'],
+  ['Tonight', 'You showed up. That was the whole idea.'],
+];
+const ledger = { pages: [], found: new Set(), flash: 0, text: null };
+function placeLedger() {
+  ledger.pages.length = 0;
+  const idx = ({ prologue: 0, easton: 1, taunton: 3, spartanburg: 5, plantcity: 7, lansing: 9, billings: 11, portland: 13, sacramento: 15, aurora: 16, merge: 17 })[WORLD.id];
+  if (idx === undefined) return;
+  const spots = WORLD.id === 'easton' ? [[3830, 350], [2650, 288]] : WORLD.id === 'prologue' ? [[1700, null]] : WORLD.id === 'taunton' ? [[3520, 382], [2300, 434]] : [[3760, 350], [2200, 392]];
+  spots.forEach(([x, y], k) => { const n = idx + k; if (n >= LEDGER.length || ledger.found.has(n)) return; ledger.pages.push({ x, y: y === null ? groundYAt(x) : y, n, t: rnd(0, 6) }); });
+}
+function updateLedger(dt) {
+  if (ledger.flash > 0) ledger.flash -= dt;
+  for (let i = ledger.pages.length - 1; i >= 0; i--) { const p = ledger.pages[i]; p.t += dt; if (Math.abs(p.x - player.x) < 28 && Math.abs(p.y - player.y) < 50) { ledger.found.add(p.n); ledger.pages.splice(i, 1); ledger.flash = 6; ledger.text = LEDGER[p.n]; sfx('page'); for (let k = 0; k < 14; k++) spawn({ k: 'spark', x: p.x, y: p.y - 20, vx: rnd(-120, 120), vy: rnd(-200, 0), life: 0.6, t: 0, c: [242, 181, 68] }); } }
+}
+function drawLedgerPages() { for (const p of ledger.pages) { const fy = Math.sin(p.t * 2) * 4; ctx.save(); ctx.translate(p.x, p.y - 22 + fy); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = rgba([242, 181, 68], 0.18 + 0.1 * Math.sin(p.t * 4)); ctx.beginPath(); ctx.arc(0, 0, 22, 0, Math.PI * 2); ctx.fill(); ctx.restore(); ctx.save(); ctx.translate(p.x, p.y - 22 + fy); ctx.rotate(Math.sin(p.t) * 0.1); ctx.fillStyle = '#7a3b2a'; rr(ctx, -9, -11, 18, 22, 2); ctx.fill(); ctx.fillStyle = '#f6ecd8'; ctx.fillRect(-7, -9, 14, 18); ctx.fillStyle = '#7a3b2a'; for (let k = 0; k < 4; k++) ctx.fillRect(-5, -6 + k * 4, 10, 1); ctx.restore(); } }
+function drawLedgerHUD() {
+  if (ledger.found.size) { ctx.font = 'bold 11px system-ui, sans-serif'; ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(16,26,46,.55)'; rr(ctx, W - 96, 76, 82, 22, 6); ctx.fill(); ctx.fillStyle = '#f2b544'; ctx.fillText('LEDGER ' + ledger.found.size + '/' + LEDGER.length, W - 22, 91); ctx.textAlign = 'left'; }
+  if (ledger.flash > 0 && ledger.text) {
+    const a = clamp(ledger.flash > 5 ? (6 - ledger.flash) : ledger.flash < 1 ? ledger.flash : 1, 0, 1);
+    ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = 'rgba(58,40,20,.82)'; rr(ctx, W / 2 - 300, H * 0.40, 600, 92, 10); ctx.fill(); ctx.strokeStyle = 'rgba(242,181,68,.5)'; ctx.lineWidth = 1; rr(ctx, W / 2 - 300, H * 0.40, 600, 92, 10); ctx.stroke();
+    ctx.textAlign = 'center'; ctx.font = 'bold 22px Georgia, serif'; ctx.fillStyle = '#f2b544'; ctx.fillText('FOUNDER\'S LEDGER  ·  ' + ledger.text[0], W / 2, H * 0.40 + 34);
+    ctx.font = 'italic 14px Georgia, serif'; ctx.fillStyle = '#f6ecd8'; ctx.fillText(ledger.text[1], W / 2, H * 0.40 + 66); ctx.restore(); ctx.textAlign = 'left';
+  }
+}
+
+/* ---------- 1938 prologue ---------- */
+function drawProloguePlay(g) {
+  const gy = WORLD.groundY;
+  const gg = g.createLinearGradient(0, gy, 0, H); gg.addColorStop(0, '#9a8a5a'); gg.addColorStop(0.08, '#8a7a4a'); gg.addColorStop(1, '#4a3a2a'); g.fillStyle = gg; g.fillRect(0, gy, WORLD.width, H - gy);
+  g.fillStyle = '#7a6a4a'; g.fillRect(900, gy, 300, H - gy); // dirt road
+  g.strokeStyle = '#b8a868'; g.lineWidth = 2; for (let x = 0; x < WORLD.width; x += 14) { if (x > 900 && x < 1200) continue; const hh = 5 + (x * 7) % 9; g.beginPath(); g.moveTo(x, gy); g.lineTo(x + 2, gy - hh); g.stroke(); }
+  // the feed store
+  g.fillStyle = '#b89a6a'; g.fillRect(300, 250, 420, gy - 250); g.fillStyle = '#7a5a3a'; g.beginPath(); g.moveTo(280, 252); g.lineTo(510, 170); g.lineTo(740, 252); g.closePath(); g.fill();
+  g.fillStyle = '#e8dcc0'; g.fillRect(310, 262, 400, 40); g.fillStyle = '#3a2a1a'; g.font = 'bold 22px Georgia, serif'; g.textAlign = 'center'; g.fillText('PHILLIPS FEED', 510, 290);
+  g.fillStyle = '#5a3a2a'; g.fillRect(480, 340, 60, 100); g.fillStyle = '#243447'; g.fillRect(340, 330, 60, 50); g.fillRect(620, 330, 60, 50);
+  g.fillStyle = '#7a5a3a'; g.fillRect(300, 300, 420, 6); for (let x = 300; x < 720; x += 60) g.fillRect(x, 306, 4, 134);
+  // porch + sacks
+  g.fillStyle = '#8a6a4a'; g.fillRect(280, gy - 16, 460, 16); for (let i = 0; i < 4; i++) { g.fillStyle = '#c9b48a'; rr(g, 320 + i * 30, gy - 40, 24, 24, 6); g.fill(); g.fillStyle = '#7a5a3a'; g.fillRect(324 + i * 30, gy - 30, 16, 3); }
+  // barn across the road, fence, the scale
+  g.fillStyle = '#8a4a3a'; g.fillRect(1300, 280, 240, gy - 280); g.fillStyle = '#5a3a2a'; g.beginPath(); g.moveTo(1290, 282); g.lineTo(1420, 200); g.lineTo(1550, 282); g.closePath(); g.fill(); g.fillStyle = '#3a2a1a'; g.fillRect(1390, 360, 60, 80);
+  g.fillStyle = '#7a5a3a'; for (let x = 1600; x < 2400; x += 40) g.fillRect(x, gy - 30, 4, 30); g.fillRect(1600, gy - 24, 800, 3); g.fillRect(1600, gy - 12, 800, 3);
+  g.fillStyle = '#6a6a6a'; g.fillRect(780, gy - 8, 80, 8); g.fillRect(816, gy - 40, 8, 32); g.fillStyle = '#e8dcc0'; g.beginPath(); g.arc(820, gy - 44, 10, 0, Math.PI * 2); g.fill();
+  // trees
+  drawOak(g, 150, gy, 1.0); drawOak(g, 2200, gy, 1.1); drawOak(g, 2600, gy, 0.9);
+}
+function drawHorse(c, x, y, t) { c.save(); c.translate(x, y); c.fillStyle = 'rgba(0,0,0,.2)'; c.beginPath(); c.ellipse(0, 1, 34, 5, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = '#5a3a24'; rr(c, -30, -58, 60, 30, 12); c.fill(); for (const lx of [-22, -10, 8, 20]) c.fillRect(lx, -30, 7, 30); c.save(); c.translate(28, -56); c.rotate(-0.5 + Math.sin(t * 1.5) * 0.05); rr(c, -6, -26, 12, 30, 5); c.fill(); rr(c, -4, -36, 16, 14, 5); c.fill(); c.fillStyle = '#2a1a10'; c.fillRect(2, -34, 4, 6); c.restore(); c.fillStyle = '#2a1a10'; for (let k = 0; k < 6; k++) c.fillRect(-28 + k * 8, -62 - (k % 2) * 2, 6, 6); c.save(); c.translate(-30, -50); c.rotate(0.6 + Math.sin(t * 2) * 0.2); c.fillRect(-2, 0, 4, 28); c.restore(); c.restore(); }
+WORLD_DEFS.prologue = {
+  id: 'prologue', name: '1938', location: 'A feed store on a county road — 1938', width: 2800, groundY: 440, truckX: -9999,
+  solids: () => [[0, 440, 2800, 200, 0], [280, 424, 460, 16, 1]], lights: () => [{ x: 510, y: 360, r: 260, color: [255, 210, 140], night: 1, glow: 1 }],
+  far: bakeEastonFar, play: drawProloguePlay, coffee: { x: -9999, y: 440 }, checkpoint: { x: 200, y: 440 }, spawn: { x: 200, y: 440 }, weather: 0, hour: 15.5, sepia: true,
+  setup: setupPrologue,
+};
+function setupPrologue() {
+  story.prologueDone = false; story.weaponsOnline = false;
+  const founder = addNPC({ look: { name: 'The Founder', role: '1938', skin: '#2a2a2a', hair: '#1a1a1a', style: 'cap', shirt: '#2a2a2a', pants: '#1a1a1a', acc: 'none' }, x: 460, y: 424, facing: 1, lines: ['"Sack of oats for the mare, then the Millers\' order across the road. Rain or no rain."'] });
+  founder.silhouette = true;
+  const horse = { x: 1100, y: 440, t: 0 }; WORLD.horse = horse;
+  const miller = addNPC({ look: { name: 'Mrs. Miller', role: 'Customer', skin: '#f1c9a5', hair: '#6a4a3a', style: 'bun', shirt: '#7a5a6a', pants: '#3a2a3a', acc: 'none' }, x: 2300, y: 440, facing: -1, lines: ['Mrs. Miller: "In this weather? Well. I suppose you said you would."'] });
+  let fed = false, delivered = false;
+  const sack = spawnPackage(360, 424, 'OATS');
+  WORLD.horseAccepts = () => { fed = true; };
+  miller.acceptsPackage = () => { delivered = true; say(miller, 'Mrs. Miller: "You showed up. That\'s the whole thing, isn\'t it."'); };
+  setObjectives([
+    { text: '1938  ·  Carry the sack of oats to the mare by the road', check: () => fed, onDone: () => { weather = 2; spawnPackage(1000, 440, 'MILLERS'); banner('It starts to rain.', 2.5); } },
+    { text: 'Take the Millers\' order across the road', check: () => delivered, onDone: () => { story.prologueDone = true; banner('"Show up for the people who count on you."', 4.5); } },
+    { text: '', check: () => false },
+  ]);
+}
+function updatePrologue(dt) {
+  if (WORLD.id !== 'prologue') return;
+  const h = WORLD.horse; h.t += dt;
+  if (player.carry && player.carry.label === 'OATS' && Math.abs(player.x - h.x) < 50 && edge.use) { packages.splice(packages.indexOf(player.carry), 1); player.carry = null; WORLD.horseAccepts(); sfx('join'); }
+  if (story.prologueDone) { story.proT = (story.proT || 0) + dt; if (story.proT > 5) { story.prologueDone = false; story.proT = 0; loadWorld('easton'); restoredBanner.t = 4; restoredBanner.text = 'EASTON, PENNSYLVANIA  ·  88 YEARS LATER  ·  11:52 PM'; } }
+  if (edge.dash && edge.jump) { loadWorld('easton'); }
+}
+function drawPrologueLayer() { if (WORLD.id !== 'prologue') return; drawHorse(ctx, WORLD.horse.x, WORLD.horse.y, WORLD.horse.t); if (player.carry && player.carry.label === 'OATS' && Math.abs(player.x - WORLD.horse.x) < 50) { ctx.fillStyle = 'rgba(16,26,46,.7)'; rr(ctx, WORLD.horse.x - 34, WORLD.horse.y - 96, 68, 18, 5); ctx.fill(); ctx.fillStyle = '#f2b544'; ctx.font = 'bold 10px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('E  ·  FEED', WORLD.horse.x, WORLD.horse.y - 83); ctx.textAlign = 'left'; } }
+function drawSepia() {
+  if (!WORLD.def || !WORLD.def.sepia) return;
+  ctx.save(); ctx.globalCompositeOperation = 'saturation'; ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, W, H); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = '#c9a56a'; ctx.fillRect(0, 0, W, H); ctx.globalCompositeOperation = 'screen'; ctx.fillStyle = 'rgba(60,40,20,.25)'; ctx.fillRect(0, 0, W, H); ctx.restore();
+  ctx.save(); ctx.globalAlpha = 0.25; ctx.globalCompositeOperation = 'multiply'; ctx.drawImage(LAYERS.grain, Math.sin(gameTime * 30) * 3, Math.cos(gameTime * 20) * 3); ctx.restore();
+  const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.85); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(20,10,0,.55)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(246,236,216,.6)'; ctx.font = '10px system-ui, sans-serif'; ctx.textAlign = 'right'; ctx.fillText('jump + dash to skip', W - 14, H - 8); ctx.textAlign = 'left';
+}
+
+/* ---------- Buying Show epilogue ---------- */
+function drawShowPlay(g) {
+  const gy = WORLD.groundY;
+  g.fillStyle = '#2a2f3a'; g.fillRect(0, 0, WORLD.width, H); // hall
+  g.fillStyle = '#3a4050'; g.fillRect(0, gy, WORLD.width, H - gy); g.fillStyle = '#4a5060'; for (let x = 0; x < WORLD.width; x += 80) g.fillRect(x, gy, 40, H - gy);
+  g.fillStyle = '#1e2430'; g.fillRect(0, 0, WORLD.width, 120); for (let x = 60; x < WORLD.width; x += 200) { g.fillStyle = '#5a6070'; g.fillRect(x, 100, 60, 8); }
+  g.fillStyle = '#243447'; rr(g, 200, 140, 560, 60, 8); g.fill(); g.fillStyle = '#f2b544'; g.font = 'bold 30px Georgia, serif'; g.textAlign = 'center'; g.fillText('PHILLIPS BUYING SHOW', 480, 182);
+  g.fillStyle = '#e6d7bd'; g.font = '12px system-ui'; g.fillText('75+ brands  ·  every DC  ·  and one alley cat', 480, 214);
+  const booths = ['KIBBLE CO', 'AQUATIC', 'FEED & FARM', 'VET', 'GROOM', 'SHELTER', 'TREATS', 'CENTRAL PET', 'MILO\'S', 'IT DEPT'];
+  booths.forEach((b, i) => { const x = 900 + i * 300; const col = ['#c0392b', '#31506a', '#6a8a4a', '#7a4a8a', '#c8912e', '#3f7f8f', '#8a4a3a', '#3a5a8a', '#3a3a4a', '#243447'][i]; g.fillStyle = col; g.fillRect(x, 300, 200, 140); g.fillStyle = 'rgba(255,255,255,.12)'; g.fillRect(x, 300, 200, 10); g.fillStyle = '#f6ecd8'; g.font = 'bold 12px system-ui'; g.fillText(b, x + 100, 326); g.fillStyle = '#e6d7bd'; g.fillRect(x + 20, 380, 160, 60); g.fillStyle = '#f2b544'; g.fillRect(x + 20, 380, 160, 4); for (let k = 0; k < 4; k++) { g.fillStyle = k % 2 ? '#c9a56a' : '#e9e1cf'; g.fillRect(x + 30 + k * 36, 350, 26, 26); } });
+  drawTrailer(g, 3540, 288, gy);
+}
+WORLD_DEFS.show = {
+  id: 'show', name: 'The Buying Show', location: 'Phillips East Coast Buying Show — the floor', width: 4000, groundY: 440, truckX: -9999,
+  solids: () => [[0, 440, 4000, 200, 0]], lights: () => Array.from({ length: 12 }, (_, i) => ({ x: 200 + i * 340, y: 130, r: 280, color: [255, 230, 190], night: 1, cone: 1 })),
+  far: () => { LAYERS.ridge = mkCanvas(10, 10); LAYERS.hills = mkCanvas(10, 10); LAYERS.trees = mkCanvas(10, 10); }, play: drawShowPlay,
+  coffee: { x: 600, y: 440 }, checkpoint: { x: 300, y: 440 }, spawn: { x: 300, y: 440 }, weather: 0, hour: 10, indoor: true,
+  setup: () => {
+    setObjectives([{ text: 'The Buying Show. Everyone you helped is here. Talk to people.', check: () => false }]);
+    let i = 0; for (const ch of ROSTER) { if (ch === hero || crew.some(f => f.hero === ch)) continue; addNPC({ hero: ch, look: ch, x: 3600 + (i % 5) * 50, y: 440, facing: i % 2 ? 1 : -1, lines: [ch.name + ': "' + ['We did that.', 'Site\'s live. Site\'s been live. Relax.', 'Somebody explain the cat.', 'Next year, Monterey.', 'I never want to see a beetle again.'][i % 5] + '"'] }); i++; }
+    const guests = [['Rosa', NPC_LOOKS.rosa, 1000, 'Rosa: "Bay 2 is a booth now. Progress."'], ['Sal', NPC_LOOKS.sal, 1300, 'Sal: "Receiving\'s fine. Receiving\'s always fine."'], ['Cap\'n Reyes', { name: 'Cap\'n Reyes', role: 'Aquatics', skin: '#eec2a0', hair: '#3a2c22', style: 'cap', shirt: '#f2b544', pants: '#2b2f3a', acc: 'vest' }, 1600, 'Cap\'n Reyes: "Not a single pipe with a face on it. Miracle."'], ['Dr. Okafor', { name: 'Dr. Okafor', role: 'Vet', skin: '#8a5a3a', hair: '#1a1410', style: 'short', shirt: '#7a4a8a', pants: '#2b2f3a', acc: 'lanyard' }, 1900, 'Dr. Okafor: "Cold chain held. I checked twice."'], ['Nadia', { name: 'Nadia', role: 'Groomer', skin: '#d9a77c', hair: '#1a1410', style: 'ponytail', shirt: '#c8912e', pants: '#2b2f3a', acc: 'none' }, 2200, 'Nadia: "Every tag on the right crate. I could cry."'], ['Grace', { name: 'Grace', role: 'Shelter', skin: '#c48a62', hair: '#3a2c22', style: 'wavy', shirt: '#3f7f8f', pants: '#2b2f3a', acc: 'none' }, 2500, 'Grace: "All six dogs adopted. Biscuit gets the credit."']];
+    for (const [n, look, x, line] of guests) addNPC({ look, x, y: 440, facing: -1, lines: [line] });
+    const m = addMilo(3400, false); m.lines = null; m.onTalk = (n) => say(n, 'Milo: "Legit booth. Permit and everything. Twenty shards a bag, same as always."', [{ label: 'Buy Meowijuana ($20)', fn: () => { if (bucks.n >= 20) { bucks.n -= 20; catnip.n++; banner('Meowijuana ×' + catnip.n, 2); } } }, { label: 'Proud of you', fn: null }]);
+  },
+};
+const _driveOptsEaston = WORLD_DEFS.easton.driveOptions;
+WORLD_DEFS.easton.driveOptions = () => _driveOptsEaston().concat(story.ending ? [{ label: 'The Buying Show', to: 'show' }] : []);
+WORLD_DEFS.show.driveTo = 'easton'; WORLD_DEFS.show.driveLabel = 'BACK TO EASTON'; WORLD_DEFS.show.driveHours = 2; WORLD_DEFS.show.driveRequires = () => null; WORLD_DEFS.show.miles = 60; WORLD_DEFS.show.truckX = 3540;
+
+/* ---------- attract-mode demo ---------- */
+const demo = { active: false, idx: 0, t: 0, caption: '', script: [] };
+const DEMO_SCRIPT = [
+  { world: 'easton', x: 700, hour: 23.9, weather: 0, cap: 'Easton, Pennsylvania. 11:52 PM. The site goes live at midnight.', dur: 6, walk: 1 },
+  { world: 'easton', x: 1800, hour: 23.95, weather: 0, cap: 'Carry the order. Scan the pallets. Something is wrong in the server room.', dur: 6, walk: 1, y: 392 },
+  { world: 'taunton', x: 400, hour: 6.2, weather: 1, cap: 'Drive the network. Taunton, Massachusetts, in the fog.', dur: 6, walk: 1 },
+  { world: 'spartanburg', x: 2800, hour: 15, weather: 2, cap: 'Spartanburg. A storm, a forklift, and a cat with a business plan.', dur: 6, walk: 1, fight: ['flicker', 'jitter', 'packet'] },
+  { world: 'lansing', x: 500, hour: 8.5, weather: 3, cap: 'Crews are three. Skills are earned. Bosses restart the stage.', dur: 6, walk: 1 },
+  { world: 'billings', x: 2900, hour: 16.5, weather: 0, cap: 'Nine distribution centers. One promise.', dur: 6, walk: 1, fight: ['flicker', 'flicker', 'ghost'] },
+  { world: 'easton', x: 1900, hour: 23.98, weather: 0, cap: 'HECKTOWN ROAD  ·  press any key to play', dur: 7, walk: 0, y: 392 },
+];
+function startDemo() {
+  hero = ROSTER[0]; player.hero = hero; crew.length = 0; story.turnDone = true; story.weaponsOnline = true;
+  for (const id of Object.keys(restored)) restored[id] = true; restored.easton = false; story.cutoverKey = false;
+  document.getElementById('title').classList.add('hidden'); running = true; last = 0; restoredBanner.t = 0; ledger.flash = 0;
+  demo.active = true; demo.idx = -1; demo.t = 0; demoNext();
+}
+function demoNext() {
+  demo.idx = (demo.idx + 1) % DEMO_SCRIPT.length; const s = DEMO_SCRIPT[demo.idx]; demo.t = 0; demo.caption = s.cap;
+  loadWorld(s.world, { x: s.x, y: s.y || 440 }); hour = s.hour; timeAuto = false; weather = s.weather; setObjectives([]); WORLD_DEFS.easton.door = null;
+  if (s.world === 'easton') { for (const n of ['Aaron', 'Greg']) { const q = npcs.find(z => z.hero && z.hero.name === n); if (q) joinCrew(q.hero); } }
+  if (s.fight) spawnGroup(s.x + 200, s.fight);
+  player.inv = 99;
+}
+function updateDemo(dt) {
+  if (!demo.active) return;
+  demo.t += dt; const s = DEMO_SCRIPT[demo.idx];
+  if (s.walk) { keys.ArrowRight = demo.t < s.dur - 1.5 && (Math.floor(demo.t) % 3 !== 2) ? 1 : 0; if (Math.floor(demo.t * 2) % 5 === 0 && player.onGround) keys.Space = 1; else keys.Space = 0; }
+  else { keys.ArrowRight = 0; }
+  player.inv = 99; player.hp = 3;
+  if (demo.t >= s.dur) demoNext();
+}
+function drawDemoHUD() {
+  if (!demo.active) return;
+  ctx.fillStyle = 'rgba(16,26,46,.7)'; rr(ctx, W / 2 - 340, H - 150, 680, 44, 10); ctx.fill();
+  ctx.textAlign = 'center'; ctx.font = 'italic 16px Georgia, serif'; ctx.fillStyle = '#f6ecd8'; ctx.fillText(demo.caption, W / 2, H - 122); ctx.textAlign = 'right';
+  ctx.font = 'bold 11px system-ui, sans-serif'; ctx.fillStyle = 'rgba(242,181,68,.9)'; ctx.fillText('DEMO  ·  any key to play', W - 22, 112); ctx.textAlign = 'left';
+}
+function demoExit() { if (!demo.active) return; demo.active = false; location.reload(); }
+window.addEventListener('keydown', e => { if (demo.active && !['KeyM'].includes(e.code)) demoExit(); });
+canvas.addEventListener('touchstart', () => demoExit(), { passive: true });
 bakeShared();
 player.hero = hero;
 loadWorld('easton');
