@@ -312,9 +312,10 @@ function drawBiscuit(c, d, lit) {
 }
 
 /* ---------------- world: Easton HQ exterior ---------------- */
-const WORLD = { width: 4200, groundY: 440 };
+const WORLD = { id: 'easton', width: 4200, groundY: 440, location: 'Easton, Pennsylvania — Phillips Pet HQ' };
 // solids: [x, y, w, h, oneWay]
-const SOLIDS = [
+let SOLIDS = [];
+const EASTON_SOLIDS = [
   [0, WORLD.groundY, WORLD.width, 200, 0],
   // dock platform
   [1720, 392, 720, 48, 0],
@@ -339,7 +340,8 @@ const SOLIDS = [
 ];
 
 // light sources: {x,y,r,color,base,night} — 'night' = only when dark
-const LIGHTS = [
+let LIGHTS = [];
+const EASTON_LIGHTS = [
   { x: 1215, y: 300, r: 300, color: [255, 210, 140], night: 1, cone: 1 },   // lamp post
   { x: 1810, y: 330, r: 240, color: [255, 200, 120], night: 1, cone: 1 },   // dock lamp 1
   { x: 2090, y: 330, r: 240, color: [255, 200, 120], night: 1, cone: 1 },   // dock lamp 2
@@ -354,7 +356,7 @@ const LIGHTS = [
 
 // ---- pre-rendered layers ----
 const LAYERS = {};
-function bakeLayers() {
+function bakeEastonFar() {
   // Far ridge: Blue Mountain silhouette, with Peace Candle tower
   {
     const w = 1400, h = 300, c = mkCanvas(w, h), g = c.getContext('2d');
@@ -396,9 +398,9 @@ function bakeLayers() {
     }
     LAYERS.trees = c;
   }
-  // Play layer (world-wide static scenery)
+}
+function drawEastonPlay(g) {
   {
-    const c = mkCanvas(WORLD.width, H), g = c.getContext('2d');
     // ground
     const gg = g.createLinearGradient(0, WORLD.groundY, 0, H); gg.addColorStop(0, '#6f8f4a'); gg.addColorStop(0.08, '#5c7a3c'); gg.addColorStop(0.12, '#6b5a44'); gg.addColorStop(1, '#3f3529');
     g.fillStyle = gg; g.fillRect(0, WORLD.groundY, WORLD.width, H - WORLD.groundY);
@@ -430,8 +432,9 @@ function bakeLayers() {
     // road sign
     g.fillStyle = '#2c3038'; g.fillRect(120, 380, 4, 60); g.fillStyle = '#1e6e3a'; rr(g, 60, 364, 124, 30, 4); g.fill();
     g.fillStyle = '#fff'; g.font = 'bold 12px system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('HECKTOWN RD', 122, 384);
-    LAYERS.play = c;
   }
+}
+function bakeShared() {
   // Foreground grass (bottom edge) — sparse so it never hides the player
   {
     const w = 1400, h = 60, c = mkCanvas(w, h), g = c.getContext('2d');
@@ -586,6 +589,8 @@ const WEATHER = ['Clear', 'Fog', 'Rain', 'Snow'];
 let hero = ROSTER[0];
 let running = false;
 let shake = 0;
+let mode = 'world'; // 'world' | 'drive'
+const restored = { taunton: false };
 let flash = 0; // hud fade
 
 function solidsAt() { return SOLIDS; }
@@ -686,8 +691,8 @@ let fogBands = []; for (let i = 0; i < 6; i++) fogBands.push({ y: 300 + i * 30, 
 let snowAcc = 0;
 function updateWeather(dt, tNow) {
   // steam from rooftop HVAC always
-  if (tNow % 0.09 < dt) for (const sx of [670, 1210]) spawn({ k: 'steam', x: sx + rnd(-10, 10), y: 212, vx: rnd(-6, 6) + windX() * 0.2, vy: rnd(-26, -16), life: rnd(1.6, 2.6), t: 0, r: rnd(6, 10) });
-  if (tNow % 0.5 < dt) spawn({ k: 'steam', x: 2910 + rnd(-2, 2), y: 288, vx: windX() * 0.2, vy: rnd(-30, -20), life: 1.6, t: 0, r: 5 }); // exhaust
+  if (WORLD.id === 'easton' && tNow % 0.09 < dt) for (const sx of [670, 1210]) spawn({ k: 'steam', x: sx + rnd(-10, 10), y: 212, vx: rnd(-6, 6) + windX() * 0.2, vy: rnd(-26, -16), life: rnd(1.6, 2.6), t: 0, r: rnd(6, 10) });
+  if (tNow % 0.5 < dt) spawn({ k: 'steam', x: WORLD.truckX + 448 + rnd(-2, 2), y: 288, vx: windX() * 0.2, vy: rnd(-30, -20), life: 1.6, t: 0, r: 5 }); // exhaust
   if (weather === 2) { for (let i = 0; i < 6; i++) spawn({ k: 'rain', x: camera.x + rnd(-100, W + 100), y: camera.y - 20, vx: windX() * 0.6 - 60, vy: rnd(900, 1100), life: 1, t: 0 }); }
   if (weather === 3) { for (let i = 0; i < 2; i++) spawn({ k: 'snow', x: camera.x + rnd(-100, W + 100), y: -10, vx: windX() * 0.15, vy: rnd(40, 90), life: 9, t: 0, r: rnd(1.5, 3.5), ph: rnd(0, 6) }); snowAcc = Math.min(1, snowAcc + dt * 0.02); }
   else snowAcc = Math.max(0, snowAcc - dt * 0.03);
@@ -716,7 +721,8 @@ function nearestLight(x, y, night) {
 /* ---------------- camera ---------------- */
 function updateCamera(dt) {
   camera.look += (player.facing * 90 - camera.look) * Math.min(1, dt * 2.5);
-  const tx = clamp(player.x + camera.look - W / 2, 0, WORLD.width - W);
+  let tx = clamp(player.x + camera.look - W / 2, 0, WORLD.width - W);
+  if (arena.active) { const aw = arena.x1 - arena.x0 + 80; tx = aw <= W ? clamp((arena.x0 + arena.x1) / 2 - W / 2, 0, WORLD.width - W) : clamp(player.x + camera.look * 0.5 - W / 2, arena.x0 - 40, arena.x1 + 40 - W); }
   const ty = clamp(player.y - H * 0.68, -60, 0);
   camera.x += (tx - camera.x) * Math.min(1, dt * 6);
   camera.y += (ty - camera.y) * Math.min(1, dt * 3);
@@ -732,7 +738,9 @@ function update(dt) {
   if (edge.time) { hour = Math.round(hour / 3) * 3 + 3; timeAuto = false; flash = 2; }
   if (timeAuto) hour += dt / 15; // one hour per 15 s
   hour = ((hour % 24) + 24) % 24;
+  if (mode === 'drive') { updateDrive(dt); if (flash > 0) flash -= dt; return; }
   updatePlayer(dt);
+  if (arena.active) { player.x = clamp(player.x, arena.x0 + 12, arena.x1 - 12); }
   updateDog(dt);
   updateCombat(dt);
   updateCamera(dt);
@@ -743,6 +751,7 @@ function update(dt) {
 
 /* ---------------- render ---------------- */
 function render() {
+  if (mode === 'drive') { renderDrive(); return; }
   const sk = skyAt(hour), night = nightness(hour);
   const cx = camera.x, cy = camera.y;
   // sky
@@ -765,7 +774,7 @@ function render() {
   { const hz = ctx.createLinearGradient(0, 150, 0, 330); hz.addColorStop(0, rgba(sk.haze, 0)); hz.addColorStop(1, rgba(sk.haze, 0.35)); ctx.fillStyle = hz; ctx.fillRect(0, 150, W, 180); }
   drawTiled(LAYERS.hills, 0.28, 90 + cy * 0.35, mix(sk.haze, [64, 96, 62], 0.6 + night * 0.28), 1);
   // candle light at night
-  if (night > 0.3) { const px = (900 - cx * 0.12) % 1400; ctx.fillStyle = rgba([255, 200, 100], night * 0.9); ctx.beginPath(); ctx.arc(px + 5, 130 + cy * 0.2, 3, 0, Math.PI * 2); ctx.fill(); }
+  if (WORLD.id === 'easton' && night > 0.3) { const px = (900 - cx * 0.12) % 1400; ctx.fillStyle = rgba([255, 200, 100], night * 0.9); ctx.beginPath(); ctx.arc(px + 5, 130 + cy * 0.2, 3, 0, Math.PI * 2); ctx.fill(); }
   // tree line
   drawTiled(LAYERS.trees, 0.55, 110 + cy * 0.6, null, 1);
   { const hz = ctx.createLinearGradient(0, 240, 0, 450); hz.addColorStop(0, rgba(sk.haze, 0.05)); hz.addColorStop(1, rgba(sk.haze, 0.22 + night * 0.12)); ctx.fillStyle = hz; ctx.fillRect(0, 240, W, 210); }
@@ -828,11 +837,14 @@ function render() {
         ctx.fillStyle = pg; ctx.beginPath(); ctx.ellipse(lx, gy, L.r * 0.6, 14, 0, 0, Math.PI * 2); ctx.fill();
       }
     }
+    if (WORLD.id === 'easton') {
     // sign letters glow
     ctx.fillStyle = rgba([242, 181, 68], night * 0.9); ctx.font = 'bold 30px Georgia, serif'; ctx.textAlign = 'center'; ctx.fillText('PHILLIPS', 990 - cx, 264 - cy);
     // lit windows
     ctx.fillStyle = rgba([255, 230, 170], night * 0.35);
     for (let i = 0; i < 9; i++) { const wx = 600 + i * 82; if (wx > 900 && wx < 1100) continue; if (i % 3 === 1) continue; ctx.fillRect(wx + 3 - cx, 269 - cy, 38, 34); if (i % 2) ctx.fillRect(wx + 3 - cx, 331 - cy, 38, 34); }
+    }
+    if (WORLD.id === 'taunton') { ctx.fillStyle = rgba([255, 240, 200], night * 0.9); ctx.font = 'bold 22px Georgia, serif'; ctx.textAlign = 'center'; ctx.fillText('PHILLIPS', 1180 - cx, 292 - cy); const bl = (gameTime * 0.5) % 1; ctx.fillStyle = rgba([255, 255, 220], night * (bl < 0.5 ? 0.9 : 0.2)); ctx.beginPath(); ctx.arc(2980 - cx, 92 - cy, 7, 0, Math.PI * 2); ctx.fill(); }
     ctx.restore();
   }
   // ---- weather overlays ----
@@ -884,7 +896,7 @@ function drawHUD(night) {
   ctx.font = '12px system-ui, sans-serif'; const tw = ctx.measureText(label).width;
   ctx.fillStyle = 'rgba(16,26,46,.55)'; rr(ctx, 14, 14, tw + 24, 26, 8); ctx.fill(); ctx.fillStyle = '#f6ecd8'; ctx.fillText(label, 26, 31);
   // location
-  ctx.font = 'italic 12px Georgia, serif'; ctx.fillStyle = 'rgba(246,236,216,.7)'; ctx.fillText('Easton, Pennsylvania — Phillips Pet HQ', 14 + tw + 50, 31);
+  ctx.font = 'italic 12px Georgia, serif'; ctx.fillStyle = 'rgba(246,236,216,.7)'; ctx.fillText(WORLD.location, 14 + tw + 50, 31);
   // touch controls
   if (touch.used) {
     ctx.save(); ctx.globalAlpha = 0.55;
@@ -912,8 +924,8 @@ function frame(ts) {
 /* ---------------- title wiring ---------------- */
 function startGame(idx) {
   hero = ROSTER[idx]; player.hero = hero;
-  for (const e of enemies) e.dead = true; enemies.length = 0; waveState.alive = 0; waveState.n = 0; waveState.toSpawn = 0; waveState.cd = 2.5;
-  resetPack(); spawnCocoons();
+  resetPack(); restored.taunton = false;
+  loadWorld('easton');
   document.getElementById('title').classList.add('hidden');
   running = true; last = 0;
   flash = 3;
@@ -940,8 +952,8 @@ const bucks = { n: 0, total: 0 };
 const upg = { rate: 0, count: 0, range: 0 }; // purchased levels
 const waveState = { n: 0, alive: 0, cd: 2.5, spawned: 0, toSpawn: 0, rifts: [] };
 const shop = { open: false, sel: 0, near: false };
-const COFFEE = { x: 1180, y: WORLD.groundY }; // machine by the entrance
-const CHECKPOINT = { x: 1140, y: WORLD.groundY };
+let COFFEE = { x: 1180, y: 440 }; // machine by the entrance
+let CHECKPOINT = { x: 1140, y: 440 };
 
 /* ---------- spatial hash ---------- */
 const HASH = { cell: 128, map: new Map() };
@@ -983,6 +995,7 @@ function spawnEnemy(type, x, y) {
 }
 function damageEnemy(e, dmg, fromX, src) {
   if (e.dead || e.born > 0) return false;
+  if (e.d.boss && !e.targetable) return false;
   if (e.d.shield && fromX !== undefined) { const front = Math.sign(fromX - e.x) === e.facing; if (front) { spark(e.x + e.facing * e.w / 2, e.y - e.h / 2, [255, 120, 100], 3); e.hit = 0.06; return false; } }
   if (e.d.armor) dmg = Math.max(1, dmg - e.d.armor);
   if (e.d.cocoon) dmg *= 3; // webs are fragile
@@ -996,8 +1009,9 @@ function damageEnemy(e, dmg, fromX, src) {
 function killEnemy(e) {
   e.dead = true;
   if (e.d.cocoon) { releaseHero(e); for (let i = 0; i < 12; i++) spawn({ k: 'glitch', x: e.x + rnd(-20, 20), y: e.y - rnd(0, 56), vx: rnd(-120, 120), vy: rnd(-160, 40), life: rnd(0.3, 0.6), t: 0, c: e.d.color }); return; }
-  waveState.alive--;
-  for (let i = 0; i < 10; i++) spawn({ k: 'glitch', x: e.x + rnd(-e.w / 2, e.w / 2), y: e.y - rnd(0, e.h), vx: rnd(-120, 120), vy: rnd(-160, 40), life: rnd(0.3, 0.6), t: 0, c: e.d.color });
+  if (e.d.boss) { onBossDead(e); }
+  else waveState.alive--;
+  for (let i = 0; i < (e.d.boss ? 60 : 10); i++) spawn({ k: 'glitch', x: e.x + rnd(-e.w / 2, e.w / 2), y: e.y - rnd(0, e.h), vx: rnd(-120, 120), vy: rnd(-160, 40), life: rnd(0.3, 0.6), t: 0, c: e.d.color });
   for (let i = 0; i < e.d.shards; i++) shards.push({ x: e.x, y: e.y - e.h / 2, vx: rnd(-140, 140), vy: rnd(-260, -80), t: 0, v: e.d.beetle ? 2 : 1 });
   if (e.d.split) for (let i = 0; i < 3; i++) { const f = spawnEnemy('flicker', e.x + (i - 1) * 14, e.y); if (f) { f.vy = -300; f.vx = (i - 1) * 120; f.born = 0.2; waveState.alive++; } }
   shake = Math.max(shake, e.d.beetle ? 0.35 : 0.06);
@@ -1069,10 +1083,11 @@ function updateWaves(dt) {
       const type = waveState.queue.shift(); waveState.toSpawn--;
       const side = Math.random() < 0.5 ? -1 : 1;
       let x = clamp(player.x + side * rnd(360, 520), 40, WORLD.width - 40);
+      if (arena.active) x = clamp(x, arena.x0 + 30, arena.x1 - 30);
       const e = spawnEnemy(type, x, groundYAt(x) - 2);
       if (e) { waveState.alive++; waveState.rifts.push({ x, y: e.y - 20, t: 0, c: e.d.color }); }
     }
-  } else if (waveState.alive <= 0) {
+  } else if (waveState.alive <= 0 && !waveState.paused) {
     waveState.cd -= dt;
     if (waveState.cd <= 0) { waveState.n++; waveState.queue = waveList(waveState.n - 1); waveState.toSpawn = waveState.queue.length; waveState.cd = 0.2; waveState.banner = 2.2; }
   }
@@ -1222,10 +1237,11 @@ function buyItem(it) {
 function updateCombat(dt) {
   if (shop.bought > 0) shop.bought -= dt; if (shop.flash > 0) shop.flash -= dt;
   updateShop(dt);
-  if (shop.open) return;
+  updateDoors(dt);
+  if (shop.open || assign.open) return;
   rebuildHash();
   updateWaves(dt);
-  for (const e of enemies) if (!e.dead) updateEnemy(e, dt);
+  for (const e of enemies) if (!e.dead) { if (e.d.boss) updateBoss(e, dt); else updateEnemy(e, dt); }
   for (let i = enemies.length - 1; i >= 0; i--) if (enemies[i].dead) enemies.splice(i, 1);
   rebuildHash();
   player.hero = hero;
@@ -1277,7 +1293,8 @@ function renderCombatBack(night) {
     if (s.k === 'trap') { const a = 1 - s.t / s.life; ctx.save(); ctx.globalAlpha = 0.5 * Math.min(1, a * 3); ctx.strokeStyle = rgb(s.c); ctx.lineWidth = 1; ctx.strokeRect(s.x - s.w / 2, s.y - s.h, s.w, s.h); for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(s.x - s.w / 2, s.y - s.h * k / 4); ctx.lineTo(s.x + s.w / 2, s.y - s.h * k / 4); ctx.stroke(); } for (let k = 1; k < 5; k++) { ctx.beginPath(); ctx.moveTo(s.x - s.w / 2 + s.w * k / 5, s.y - s.h); ctx.lineTo(s.x - s.w / 2 + s.w * k / 5, s.y); ctx.stroke(); } ctx.fillStyle = rgba(s.c, 0.12); ctx.fillRect(s.x - s.w / 2, s.y - s.h, s.w, s.h); ctx.font = 'bold 9px monospace'; ctx.fillStyle = rgb(s.c); ctx.fillText('Σ', s.x - s.w / 2 + 3, s.y - s.h + 10); ctx.restore(); }
     if (s.k === 'turret') { ctx.save(); ctx.translate(s.x, s.y); ctx.fillStyle = '#243447'; rr(ctx, -10, -16, 20, 16, 3); ctx.fill(); ctx.fillStyle = rgb(s.c); ctx.fillRect(-8, -14, 16, 2); ctx.fillStyle = '#4a5f7a'; rr(ctx, -6, -28, 12, 13, 3); ctx.fill(); ctx.fillStyle = rgb(s.c); ctx.fillRect(s.facing > 0 ? 4 : -16, -24, 12, 4); ctx.globalAlpha = 0.6; ctx.strokeStyle = rgb(s.c); ctx.lineWidth = 1; ctx.strokeRect(-14, -34, 28, 36); ctx.restore(); }
   }
-  for (const e of enemies) if (!e.dead) { if (e.d.cocoon) drawCocoon(ctx, e); else drawEnemy(ctx, e); }
+  drawDoors();
+  for (const e of enemies) if (!e.dead) { if (e.d.cocoon) drawCocoon(ctx, e); else if (e.d.boss) drawBoss(ctx, e); else drawEnemy(ctx, e); }
   // coffee machine
   ctx.save(); ctx.translate(COFFEE.x, COFFEE.y); ctx.fillStyle = '#2b2f3a'; rr(ctx, -14, -54, 28, 54, 4); ctx.fill(); ctx.fillStyle = '#c0392b'; rr(ctx, -11, -50, 22, 14, 3); ctx.fill(); ctx.fillStyle = '#e9d27a'; ctx.fillRect(-6, -30, 12, 8); ctx.fillStyle = '#f6ecd8'; ctx.fillRect(-4, -20, 8, 10); ctx.fillStyle = night > 0.3 ? rgba([120, 255, 140], 0.9) : '#3f8f4a'; ctx.fillRect(4, -44, 3, 3);
   if (shop.near && !shop.open) { ctx.fillStyle = 'rgba(16,26,46,.7)'; rr(ctx, -44, -84, 88, 20, 6); ctx.fill(); ctx.fillStyle = '#f2b544'; ctx.font = 'bold 11px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('E  ·  COFFEE', 0, -70); }
@@ -1355,6 +1372,7 @@ function drawCombatHUD() {
     if (shop.flash > 0) { ctx.fillStyle = rgba([255, 120, 120], shop.flash); ctx.font = 'bold 13px system-ui, sans-serif'; ctx.fillText('Not enough shards', W / 2, 350); }
     if (shop.bought > 0) { ctx.fillStyle = rgba([120, 255, 140], shop.bought); ctx.font = 'bold 13px system-ui, sans-serif'; ctx.fillText('Brewed.', W / 2, 350); }
   }
+  drawAssignHUD();
   ctx.textAlign = 'left';
 }
 
@@ -1370,13 +1388,13 @@ function portraitFor(ch) { if (!PORTRAITS[ch.name]) { const c = mkCanvas(80, 80)
 
 // cocoon "enemy": a Static web holding a teammate
 ENEMY.cocoon = { hp: 24, w: 44, h: 58, speed: 0, dmg: 0, shards: 0, cocoon: 1, color: [200, 130, 255] };
-const COCOON_SPOTS = [
+let COCOON_SPOTS = [
   [250, null], [640, 368], [990, 340], [1215, 330], [1550, null], [2100, 392], [2650, 300], [3000, null], [3300, null], [3720, 380], [3830, 350], [4100, null],
 ];
 function spawnCocoons() {
   let i = 0;
   for (const ch of ROSTER) {
-    if (ch === hero) continue;
+    if (ch === hero || pack.some(f => f.hero === ch)) continue;
     const [x, yy] = COCOON_SPOTS[i % COCOON_SPOTS.length]; i++;
     const e = spawnEnemy('cocoon', x, yy === null ? groundYAt(x) : yy);
     if (e) { e.held = ch; e.born = 0; e.targetable = true; }
@@ -1403,9 +1421,12 @@ function updatePack(dt) {
     lastTrailX = player.x; lastTrailY = player.y;
     const maxLen = TRAIL_GAP * (pack.length + 1) + 4; if (crumbs.length > maxLen) crumbs.length = maxLen;
   }
-  pack.forEach((f, i) => {
+  let li = 0;
+  pack.forEach((f) => {
     f.t += dt;
     if (f.joinT > 0) f.joinT -= dt;
+    if (f.holding) { f.moving = false; f.run = 0; return; }
+    const i = li++;
     const idx = Math.min(crumbs.length - 1, TRAIL_GAP * (i + 1));
     const tp = idx >= 0 ? crumbs[idx] : { x: player.x - player.facing * 30 * (i + 1), y: player.y, facing: player.facing, onGround: true };
     const dx = tp.x - f.x, dy = tp.y - f.y;
@@ -1483,10 +1504,346 @@ function drawPackHUD() {
   drawOne(hero, true, -1);
   pack.forEach((f, i) => drawOne(f.hero, false, i));
   if (pack.length) { ctx.font = '10px system-ui, sans-serif'; ctx.fillStyle = 'rgba(246,236,216,.55)'; ctx.textAlign = 'center'; ctx.fillText('tap a portrait or press C to take point  ·  ' + n + ' / ' + ROSTER.length, W / 2, H - 6); }
-  if (packUI.banner > 0) { const a = Math.min(1, packUI.banner); ctx.textAlign = 'center'; ctx.font = 'bold 18px Georgia, serif'; ctx.fillStyle = rgba([242, 181, 68], a); ctx.fillText(packUI.bannerText, W / 2, H * 0.24); }
+  if (packUI.banner > 0) { const a = Math.min(1, packUI.banner); ctx.textAlign = 'center'; ctx.font = 'bold 18px Georgia, serif'; ctx.fillStyle = rgba([242, 181, 68], a); ctx.fillText(packUI.bannerText, W / 2, H * 0.31); }
   ctx.textAlign = 'left';
 }
-bakeLayers();
+
+/* =====================================================================
+   WORLDS, THE DRIVE, SQUAD DOORS, MINI-BOSSES (M3)
+   ===================================================================== */
+const arena = { active: false, x0: 0, x1: 0, boss: null };
+const assign = { open: false, door: null, sel: new Set(), cursor: 0 };
+const DOORS = []; // squad doors in the current world
+const restoredBanner = { t: 0, text: '' };
+
+/* ---------- Taunton, MA — coastal New England, fog ---------- */
+function bakeTauntonFar() {
+  // sea horizon + far shoreline with a lighthouse and a church steeple
+  { const w = 1400, h = 300, c = mkCanvas(w, h), g = c.getContext('2d');
+    g.fillStyle = '#000'; g.fillRect(0, 214, w, h - 214);
+    // low headland
+    g.beginPath(); g.moveTo(0, 214); for (let x = 0; x <= 560; x += 40) g.lineTo(x, 214 - Math.sin(x * 0.012) * 14 - 8); g.lineTo(560, 214); g.closePath(); g.fill();
+    // lighthouse on the headland
+    g.fillRect(300, 150, 12, 62); g.beginPath(); g.moveTo(296, 150); g.lineTo(316, 150); g.lineTo(306, 138); g.closePath(); g.fill(); g.fillRect(302, 144, 8, 6);
+    // steeple far right
+    g.fillRect(1050, 176, 20, 40); g.beginPath(); g.moveTo(1048, 176); g.lineTo(1072, 176); g.lineTo(1060, 130); g.closePath(); g.fill();
+    LAYERS.ridge = c; }
+  // salt marsh flats with a water tower and scrub
+  { const w = 1600, h = 300, c = mkCanvas(w, h), g = c.getContext('2d');
+    g.fillStyle = '#000'; g.fillRect(0, 246, w, h - 246);
+    for (let x = 0; x < w; x += 6) { const hh = 6 + (x * 7919) % 9; if ((x * 31) % 5 < 2) g.fillRect(x, 246 - hh, 2, hh); }
+    // water tower
+    g.fillRect(900, 150, 4, 96); g.fillRect(934, 150, 4, 96); g.fillRect(896, 120, 46, 34); g.beginPath(); g.moveTo(892, 120); g.lineTo(946, 120); g.lineTo(919, 100); g.closePath(); g.fill(); g.fillRect(908, 170, 22, 3); g.fillRect(908, 205, 22, 3);
+    // clam shack
+    g.fillRect(400, 224, 50, 22); g.beginPath(); g.moveTo(396, 226); g.lineTo(425, 208); g.lineTo(454, 226); g.closePath(); g.fill();
+    // dock pilings
+    for (let x = 600; x < 760; x += 16) g.fillRect(x, 232, 3, 14);
+    g.fillRect(600, 232, 160, 3);
+    LAYERS.hills = c; }
+  // pine + scrub tree line
+  { const w = 1200, h = 340, c = mkCanvas(w, h), g = c.getContext('2d');
+    for (let i = 0; i < 18; i++) { const tx = i * 68 + (i % 3) * 14, th = 100 + (i * 41) % 70; g.fillStyle = i % 2 ? '#213a2c' : '#1a3126'; g.fillRect(tx - 2, h - th * 0.4, 4, th * 0.4); for (let k = 0; k < 5; k++) { const ww = 26 - k * 4 + (i % 2) * 4; g.beginPath(); g.moveTo(tx - ww, h - th * 0.4 - k * th * 0.14); g.lineTo(tx + ww, h - th * 0.4 - k * th * 0.14); g.lineTo(tx, h - th * 0.4 - (k + 1.6) * th * 0.14); g.closePath(); g.fill(); } }
+    LAYERS.trees = c; }
+}
+function drawTauntonPlay(g) {
+  const gy = WORLD.groundY;
+  // sandy ground with marsh grass, gravel apron at the DC
+  const gg = g.createLinearGradient(0, gy, 0, H); gg.addColorStop(0, '#8f9a6a'); gg.addColorStop(0.07, '#7a865a'); gg.addColorStop(0.12, '#6b6250'); gg.addColorStop(1, '#3b382e');
+  g.fillStyle = gg; g.fillRect(0, gy, WORLD.width, H - gy);
+  g.fillStyle = '#5a5c60'; g.fillRect(900, gy, 1500, H - gy); g.fillStyle = '#e9d27a'; for (let x = 920; x < 2380; x += 70) g.fillRect(x, gy + 26, 30, 3);
+  // marsh water inlet (visual, with a boardwalk over it)
+  g.fillStyle = '#31506a'; g.fillRect(2480, gy + 2, 360, H - gy); g.fillStyle = 'rgba(200,230,255,.18)'; for (let x = 2490; x < 2830; x += 34) g.fillRect(x, gy + 10 + (x % 3) * 4, 18, 2);
+  g.fillStyle = '#7a5a3a'; for (let x = 2480; x < 2840; x += 24) g.fillRect(x, gy - 6, 20, 6); g.fillStyle = '#4a3624'; for (let x = 2490; x < 2840; x += 60) g.fillRect(x, gy, 5, 30);
+  // marsh grass tufts
+  g.strokeStyle = '#a4b072'; g.lineWidth = 2; for (let x = 0; x < WORLD.width; x += 13) { if (x > 900 && x < 2400) continue; if (x > 2470 && x < 2850) continue; const hh = 6 + (x * 7) % 10; g.beginPath(); g.moveTo(x, gy); g.lineTo(x + 3 - (x % 5), gy - hh); g.stroke(); }
+  // the DC: white clapboard office + grey warehouse wing, "TAUNTON, MA"
+  { const x = 940, y = 236, w = 480, h = 204; const gr = g.createLinearGradient(0, y, 0, y + h); gr.addColorStop(0, '#e9e6dc'); gr.addColorStop(1, '#bdb7a8'); g.fillStyle = gr; g.fillRect(x, y, w, h);
+    g.strokeStyle = 'rgba(0,0,0,.08)'; g.lineWidth = 1; for (let yy = y + 10; yy < y + h; yy += 9) { g.beginPath(); g.moveTo(x, yy); g.lineTo(x + w, yy); g.stroke(); }
+    g.fillStyle = '#6e6a60'; g.fillRect(x, y, w, 8); g.fillStyle = '#2f4f6f'; g.fillRect(x, y + h - 60, w, 60);
+    for (let i = 0; i < 5; i++) { const wx = x + 30 + i * 90; g.fillStyle = '#243447'; rr(g, wx, y + 34, 44, 40, 3); g.fill(); g.fillStyle = 'rgba(200,220,255,.18)'; g.fillRect(wx + 3, y + 37, 18, 34); g.fillStyle = '#6e6a60'; g.fillRect(wx + 21, y + 34, 2, 40); }
+    g.fillStyle = '#1e2c3d'; rr(g, x + 200, y + 80, 100, 124, 5); g.fill(); g.fillStyle = '#f2b544'; g.fillRect(x + 248, y + 84, 6, 116);
+    g.fillStyle = '#243447'; rr(g, x + 120, y + 6, 240, 40, 6); g.fill(); g.fillStyle = '#f2b544'; g.font = 'bold 22px Georgia, serif'; g.textAlign = 'center'; g.fillText('PHILLIPS', x + 240, y + 34);
+    g.fillStyle = '#e6d7bd'; g.font = '10px system-ui, sans-serif'; g.fillText('TAUNTON, MA', x + 240, y + 60); }
+  { const x = 1420, y = 226, w = 980, h = 214; const gr = g.createLinearGradient(0, y, 0, y + h); gr.addColorStop(0, '#a9b3bb'); gr.addColorStop(1, '#7e8890'); g.fillStyle = gr; g.fillRect(x, y, w, h); g.fillStyle = '#5e6870'; g.fillRect(x, y, w, 8);
+    g.strokeStyle = 'rgba(0,0,0,.08)'; g.lineWidth = 2; for (let xx = x; xx < x + w; xx += 12) { g.beginPath(); g.moveTo(xx, y + 8); g.lineTo(xx, y + h); g.stroke(); }
+    for (let i = 0; i < 2; i++) { const dx = x + 140 + i * 300; g.fillStyle = '#3a4048'; g.fillRect(dx, 300, 100, 92); g.fillStyle = '#4b525b'; for (let k = 0; k < 5; k++) g.fillRect(dx + 2, 302 + k * 18, 96, 16); g.fillStyle = '#2c3038'; rr(g, dx + 36, 318, 28, 10, 3); g.fill(); }
+    g.fillStyle = '#5a5e66'; g.fillRect(1520, 392, 560, 48); g.fillStyle = '#e9d27a'; g.fillRect(1520, 392, 560, 4); g.fillRect(1480, 416, 40, 24);
+    g.fillStyle = '#e9d27a'; for (let xx = 1520; xx < 2080; xx += 20) g.fillRect(xx, 436, 10, 4); }
+  // lighthouse-style grain silo (the local landmark by the DC)
+  { const x = 2960; g.fillStyle = '#d9d4c6'; g.fillRect(x - 26, 110, 52, 330); g.fillStyle = '#c0392b'; for (let yy = 130; yy < 440; yy += 60) g.fillRect(x - 26, yy, 52, 24); g.fillStyle = '#2c3038'; g.fillRect(x - 30, 98, 60, 14); g.fillStyle = '#243447'; g.fillRect(x - 14, 78, 28, 22); g.fillStyle = '#e9d27a'; g.fillRect(x - 10, 82, 20, 14); g.beginPath(); g.moveTo(x - 18, 78); g.lineTo(x + 18, 78); g.lineTo(x, 60); g.closePath(); g.fillStyle = '#2c3038'; g.fill(); }
+  // rocks + jetty at the far end
+  g.fillStyle = '#6a6f6a'; g.beginPath(); g.moveTo(3320, gy); g.lineTo(3360, gy - 28); g.lineTo(3440, gy - 30); g.lineTo(3520, gy - 58); g.lineTo(3600, gy - 60); g.lineTo(3600, gy); g.closePath(); g.fill();
+  // truck (drive home) parked at the far right
+  drawTrailer(g, WORLD.truckX, 300);
+  // sign
+  g.fillStyle = '#2c3038'; g.fillRect(120, 380, 4, 60); g.fillStyle = '#1e6e3a'; rr(g, 50, 364, 144, 30, 4); g.fill(); g.fillStyle = '#fff'; g.font = 'bold 12px system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('TAUNTON  ·  RTE 140', 122, 384);
+  // scrub oaks
+  drawOak(g, 520, gy, 0.9); drawOak(g, 2300, gy, 1.0); drawOak(g, 3200, gy, 0.8);
+  // picnic + lamp near the office
+  g.fillStyle = '#2c3038'; g.fillRect(760, 300, 6, 140); g.fillRect(728, 330, 60, 6); g.fillStyle = '#1e2127'; rr(g, 748, 288, 30, 14, 4); g.fill();
+}
+
+const WORLD_DEFS = {
+  easton: {
+    id: 'easton', name: 'Easton, PA', location: 'Easton, Pennsylvania — Phillips Pet HQ', width: 4200, groundY: 440, truckX: 2470,
+    solids: () => EASTON_SOLIDS, lights: () => EASTON_LIGHTS, far: bakeEastonFar, play: drawEastonPlay,
+    coffee: { x: 1180, y: 440 }, checkpoint: { x: 1140, y: 440 }, spawn: { x: 420, y: 440 }, cocoons: true, weather: 0, doors: [],
+    driveTo: 'taunton', driveLabel: 'DRIVE TO TAUNTON', driveHours: 4.5,
+  },
+  taunton: {
+    id: 'taunton', name: 'Taunton, MA', location: 'Taunton, Massachusetts — Phillips DC', width: 3800, groundY: 440, truckX: 3340,
+    solids: () => [[0, 440, 3800, 200, 0], [1520, 392, 560, 48, 0], [1480, 416, 40, 24, 0], [2480, 434, 360, 6, 1], [3340, 300, 420, 92, 0], [3760, 340, 30, 100, 0], [3360, 412, 80, 28, 0], [3440, 410, 80, 30, 0], [3520, 382, 80, 58, 0], [728, 330, 60, 6, 1], [1140, 316, 100, 8, 1]],
+    lights: () => [{ x: 760, y: 300, r: 300, color: [255, 210, 140], night: 1, cone: 1 }, { x: 1180, y: 290, r: 260, color: [242, 181, 68], night: 1, glow: 1 }, { x: 1190, y: 380, r: 190, color: [255, 225, 170], night: 1 }, { x: 1610, y: 330, r: 240, color: [255, 200, 120], night: 1, cone: 1 }, { x: 1910, y: 330, r: 240, color: [255, 200, 120], night: 1, cone: 1 }, { x: 2980, y: 92, r: 340, color: [255, 250, 210], night: 1, glow: 1 }, { x: 3340 + 448, y: 380, r: 90, color: [255, 240, 200], night: 1 }],
+    far: bakeTauntonFar, play: drawTauntonPlay,
+    coffee: { x: 900, y: 440 }, checkpoint: { x: 860, y: 440 }, spawn: { x: 260, y: 440 }, cocoons: false, weather: 1,
+    doors: [{ x: 2440, need: 3, x0: 2480, x1: 3300, boss: 'fogserver', name: 'FOG SERVER' }],
+    driveTo: 'easton', driveLabel: 'DRIVE HOME', driveHours: 4.5, driveRequires: 'taunton',
+  },
+};
+function loadWorld(id, spawnAt) {
+  const def = WORLD_DEFS[id];
+  WORLD.id = def.id; WORLD.name = def.name; WORLD.location = def.location; WORLD.width = def.width; WORLD.groundY = def.groundY; WORLD.truckX = def.truckX; WORLD.def = def;
+  SOLIDS = def.solids(); LIGHTS = def.lights(); COFFEE = def.coffee; CHECKPOINT = def.checkpoint;
+  def.far();
+  { const c = mkCanvas(WORLD.width, H), g = c.getContext('2d'); def.play(g); LAYERS.play = c; }
+  // clear combat state
+  for (const e of enemies) e.dead = true; enemies.length = 0; projs.length = 0; beams.length = 0; summons.length = 0; shards.length = 0;
+  waveState.alive = 0; waveState.n = 0; waveState.toSpawn = 0; waveState.cd = 3; waveState.paused = false; waveState.rifts.length = 0;
+  arena.active = false; arena.boss = null; assign.open = false;
+  DOORS.length = 0; for (const d of def.doors) DOORS.push(Object.assign({ done: false, t: 0 }, d));
+  if (restored[id]) for (const d of DOORS) d.done = true;
+  const sp = spawnAt || def.spawn;
+  player.x = sp.x; player.y = sp.y; player.vx = 0; player.vy = 0; player.dead = 0; player.inv = 1;
+  dog.x = sp.x - 60; dog.y = sp.y; dog.vx = 0; dog.vy = 0;
+  crumbs.length = 0; for (const f of pack) { f.x = sp.x - 24; f.y = sp.y; f.holding = false; }
+  camera.x = clamp(sp.x - W / 2, 0, WORLD.width - W); camera.y = 0;
+  for (const f of fireflies) f.x = rnd(0, WORLD.width);
+  weather = def.weather;
+  if (def.cocoons) { COCOON_SPOTS = [[250, null], [640, 368], [990, 340], [1215, 330], [1550, null], [2100, 392], [2650, 300], [3000, null], [3300, null], [3720, 380], [3830, 350], [4100, null]]; spawnCocoons(); }
+  mode = 'world';
+}
+
+/* ---------- the drive ---------- */
+const drive = { t: 0, dur: 24, from: null, to: null, x: 0, hop: 0, vy: 0, cargo: 100, obs: [], next: 1, honk: 0, done: false, hits: 0, msgs: [] };
+function startDrive(toId) {
+  const def = WORLD.def;
+  drive.t = 0; drive.from = WORLD.id; drive.to = toId; drive.x = 0; drive.hop = 0; drive.vy = 0; drive.cargo = 100; drive.obs.length = 0; drive.next = 1.2; drive.honk = 0; drive.done = false; drive.hits = 0; drive.startHour = hour; drive.hours = def.driveHours;
+  drive.label = WORLD_DEFS[toId].name; drive.miles = toId === 'taunton' ? 300 : 300; drive.wheel = 0;
+  drive.farFrom = { ridge: LAYERS.ridge, hills: LAYERS.hills, trees: LAYERS.trees };
+  WORLD_DEFS[toId].far(); drive.farTo = { ridge: LAYERS.ridge, hills: LAYERS.hills, trees: LAYERS.trees };
+  mode = 'drive'; timeAuto = false;
+}
+const DRIVE_SPEED = 430;
+function updateDrive(dt) {
+  drive.t += dt; drive.x += DRIVE_SPEED * dt; drive.wheel += dt * 14;
+  hour = ((drive.startHour + drive.hours * Math.min(1, drive.t / drive.dur)) % 24 + 24) % 24;
+  // hop
+  if (edge.jump && drive.hop === 0) { drive.vy = -560; drive.hop = 0.01; }
+  if (drive.hop > 0) { drive.vy += 1900 * dt; drive.hop += drive.vy * dt; if (drive.hop >= 0) { drive.hop = 0; drive.vy = 0; shake = Math.max(shake, 0.08); puff(0, 0, 0); } }
+  if (drive.honk > 0) drive.honk -= dt;
+  if (edge.dash && drive.honk <= 0) { drive.honk = 0.9; for (const o of drive.obs) if (o.k === 'flicker' && o.x - drive.x > 0 && o.x - drive.x < 340) o.scatter = 1; }
+  // spawn obstacles ahead
+  drive.next -= dt;
+  if (drive.next <= 0 && drive.t < drive.dur - 3) { drive.next = rnd(0.9, 1.7) - Math.min(0.5, drive.t * 0.015); const r = Math.random(); drive.obs.push({ k: r < 0.4 ? 'flicker' : r < 0.7 ? 'pothole' : 'crate', x: drive.x + W + 120, hit: false, t: 0, scatter: 0 }); }
+  for (let i = drive.obs.length - 1; i >= 0; i--) {
+    const o = drive.obs[i]; o.t += dt; if (o.scatter > 0) { o.scatter += dt * 3; if (o.scatter > 2) { drive.obs.splice(i, 1); continue; } }
+    const rel = o.x - drive.x; if (rel < -200) { drive.obs.splice(i, 1); continue; }
+    if (!o.hit && o.scatter === 0 && rel > 170 && rel < 300 && drive.hop === 0) { o.hit = true; drive.cargo = Math.max(0, drive.cargo - 14); drive.hits++; shake = Math.max(shake, 0.25); bucks.n = Math.max(0, bucks.n - 2); drive.msgs.push({ t: 0, s: o.k === 'flicker' ? 'Static on the road!' : o.k === 'pothole' ? 'Pothole. Cargo shifted.' : 'Crate on the shoulder.' }); }
+  }
+  for (let i = drive.msgs.length - 1; i >= 0; i--) { drive.msgs[i].t += dt; if (drive.msgs[i].t > 1.4) drive.msgs.splice(i, 1); }
+  if (shake > 0) shake -= dt;
+  if (drive.t >= drive.dur && !drive.done) { drive.done = true; loadWorld(drive.to); timeAuto = true; restoredBanner.t = 3; restoredBanner.text = WORLD.name.toUpperCase() + '  ·  ' + (drive.cargo >= 80 ? 'cargo intact' : drive.cargo >= 40 ? 'cargo a little shaken' : 'cargo took a beating'); }
+}
+function renderDrive() {
+  const sk = skyAt(hour), night = nightness(hour); const prog = Math.min(1, drive.t / drive.dur);
+  const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, rgb(sk.top)); g.addColorStop(0.5, rgb(mix(sk.top, sk.hor, 0.45))); g.addColorStop(0.8, rgb(sk.hor)); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  if (night > 0.35) { ctx.fillStyle = rgba([255, 255, 255], (night - 0.35)); for (let i = 0; i < 60; i++) ctx.fillRect((i * 137.5 + 20 - drive.x * 0.01) % W, (i * 71.3) % (H * 0.45), 1.5, 1.5); }
+  const camSave = camera.x; camera.x = drive.x;
+  drawTiled(LAYERS.clouds, 0.06, 20, mix(sk.hor, [255, 255, 255], 0.55 - night * 0.5), 0.8 - night * 0.45, gameTime * 4);
+  // crossfade far layers from → to
+  const A = drive.farFrom, B = drive.farTo, fade = clamp((prog - 0.3) / 0.4, 0, 1);
+  const tintR = mix(sk.haze, sk.top, 0.42), tintH = mix(sk.haze, [64, 96, 62], 0.6 + night * 0.28);
+  if (fade < 1) { drawTiled(A.ridge, 0.12, 30, tintR, 1 - fade); drawTiled(A.hills, 0.28, 90, tintH, 1 - fade); }
+  if (fade > 0) { drawTiled(B.ridge, 0.12, 30, tintR, fade); drawTiled(B.hills, 0.28, 90, tintH, fade); }
+  { const hz = ctx.createLinearGradient(0, 150, 0, 330); hz.addColorStop(0, rgba(sk.haze, 0)); hz.addColorStop(1, rgba(sk.haze, 0.35)); ctx.fillStyle = hz; ctx.fillRect(0, 150, W, 180); }
+  if (fade < 1) drawTiled(A.trees, 0.55, 110, null, 1 - fade); if (fade > 0) drawTiled(B.trees, 0.55, 110, null, fade);
+  camera.x = camSave;
+  // road
+  const ry = 400; ctx.fillStyle = '#4a4d55'; ctx.fillRect(0, ry, W, H - ry); ctx.fillStyle = '#3a3d44'; ctx.fillRect(0, ry, W, 6);
+  ctx.fillStyle = '#e9d27a'; const off = (-drive.x * 1.2) % 90; for (let x = off - 90; x < W; x += 90) ctx.fillRect(x, ry + 44, 48, 4);
+  ctx.fillStyle = '#9aa0a8'; const goff = (-drive.x * 1.2) % 60; for (let x = goff - 60; x < W; x += 60) ctx.fillRect(x, ry - 22, 4, 22); ctx.fillRect(0, ry - 24, W, 4);
+  // mile markers
+  const mk = (-drive.x * 1.2) % 700; ctx.fillStyle = '#1e6e3a'; rr(ctx, mk + 500, ry - 80, 110, 34, 4); ctx.fill(); ctx.fillStyle = '#2c3038'; ctx.fillRect(mk + 553, ry - 46, 4, 24); ctx.fillStyle = '#fff'; ctx.font = 'bold 11px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(drive.label.toUpperCase().split(',')[0], mk + 555, ry - 64); ctx.fillText(Math.max(0, Math.round(drive.miles * (1 - prog))) + ' mi', mk + 555, ry - 52);
+  // obstacles
+  for (const o of drive.obs) {
+    const x = o.x - drive.x + 0; // screen: truck is at ~200..640, obstacles approach from right
+    if (o.k === 'pothole') { ctx.fillStyle = '#23252b'; ctx.beginPath(); ctx.ellipse(x + 240, ry + 8, 40, 9, 0, 0, Math.PI * 2); ctx.fill(); }
+    else if (o.k === 'crate') { drawCrate(ctx, x + 220, ry - 30); }
+    else if (o.k === 'flicker') { const s = o.scatter; const e = { t: o.t, hit: 0, w: 18, h: 18, onGround: true, type: 'flicker', facing: -1, d: ENEMY.flicker }; ctx.save(); ctx.translate(x + 240 - s * 80, ry + 2 - Math.abs(Math.sin(o.t * 12)) * 12 - s * 60); ctx.globalAlpha = 1 - s / 2; ctx.scale(-1, 1); drawEnemy(ctx, Object.assign(e, { x: 0, y: 0 })); ctx.restore(); }
+  }
+  // truck
+  const ty = 300 + drive.hop + Math.sin(drive.t * 22) * (drive.hop === 0 ? 1.2 : 0);
+  ctx.save(); ctx.translate(0, ty - 300);
+  drawTrailer(ctx, 120, 300);
+  // spinning wheel hubs
+  ctx.strokeStyle = '#9aa0a8'; ctx.lineWidth = 2; for (const wx of [420, 465, 120 + 420 + 24, 120 + 420 + 66]) { for (let k = 0; k < 4; k++) { const a = drive.wheel + k * Math.PI / 2; ctx.beginPath(); ctx.moveTo(wx, 418); ctx.lineTo(wx + Math.cos(a) * 14, 418 + Math.sin(a) * 14); ctx.stroke(); } }
+  // pack in the trailer: heads at the back window; Biscuit in the cab
+  ctx.fillStyle = '#243447'; rr(ctx, 130, 322, 70, 36, 4); ctx.fill();
+  pack.slice(0, 6).forEach((f, i) => { ctx.save(); ctx.translate(140 + i * 10, 362 + (i % 2) * 2); ctx.scale(0.55, 0.55); drawHero(ctx, f.hero, 0, 0, 1, { t: gameTime + i, run: 0, moving: false }, null); ctx.restore(); });
+  ctx.save(); ctx.translate(560, 348); ctx.scale(0.8, 0.8); drawBiscuit(ctx, { x: 0, y: 0, facing: 1, moving: false, run: 0, t: gameTime, earA: -0.4 + Math.sin(gameTime * 8) * 0.2 }, null); ctx.restore();
+  ctx.save(); ctx.translate(582, 352); ctx.scale(0.7, 0.7); drawHero(ctx, hero, 0, 0, 1, { t: gameTime, run: 0, moving: false }, null); ctx.restore();
+  // headlights at night
+  if (night > 0.2) { ctx.save(); ctx.globalCompositeOperation = 'screen'; const hg = ctx.createLinearGradient(600, 380, 900, 380); hg.addColorStop(0, rgba([255, 240, 200], night * 0.45)); hg.addColorStop(1, 'rgba(255,240,200,0)'); ctx.fillStyle = hg; ctx.beginPath(); ctx.moveTo(600, 372); ctx.lineTo(960, 330); ctx.lineTo(960, 420); ctx.lineTo(600, 386); ctx.closePath(); ctx.fill(); ctx.restore(); }
+  if (drive.honk > 0) { ctx.fillStyle = rgba([255, 255, 255], drive.honk); ctx.font = 'bold 22px Georgia, serif'; ctx.textAlign = 'left'; ctx.fillText('HONK!', 610, 300 - Math.sin(drive.honk * 10) * 6); }
+  ctx.restore();
+  // exhaust puffs
+  ctx.fillStyle = 'rgba(200,200,210,.25)'; for (let k = 0; k < 4; k++) ctx.beginPath(), ctx.arc(552 - k * 14 - (drive.t * 60 % 14), 280 - k * 8 + drive.hop, 4 + k * 2, 0, Math.PI * 2), ctx.fill();
+  // rain/snow not modelled on the drive; keep grain + vignette
+  const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.5, W / 2, H / 2, H); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(10,10,30,.28)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+  ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = 0.35; ctx.drawImage(LAYERS.grain, 0, 0); ctx.restore();
+  // HUD
+  ctx.textAlign = 'left'; ctx.font = 'bold 14px Georgia, serif'; ctx.fillStyle = 'rgba(16,26,46,.55)'; rr(ctx, 14, 14, 330, 30, 8); ctx.fill(); ctx.fillStyle = '#f2b544'; ctx.fillText('ON THE ROAD', 26, 34); ctx.font = '12px system-ui, sans-serif'; ctx.fillStyle = '#f6ecd8'; ctx.fillText('to ' + drive.label + '   ·   jump to hop, dash to honk', 130, 34);
+  ctx.fillStyle = 'rgba(16,26,46,.55)'; rr(ctx, 14, 50, 200, 22, 6); ctx.fill(); ctx.fillStyle = '#f6ecd8'; ctx.font = '11px system-ui, sans-serif'; ctx.fillText('CARGO', 24, 65); ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fillRect(74, 56, 128, 10); ctx.fillStyle = drive.cargo > 50 ? '#7fe0ff' : '#ff8a5a'; ctx.fillRect(74, 56, 128 * drive.cargo / 100, 10);
+  ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fillRect(14, H - 22, W - 28, 6); ctx.fillStyle = '#f2b544'; ctx.fillRect(14, H - 22, (W - 28) * prog, 6);
+  drive.msgs.forEach((m, i) => { ctx.textAlign = 'center'; ctx.font = 'bold 14px system-ui, sans-serif'; ctx.fillStyle = rgba([255, 200, 120], 1 - m.t / 1.4); ctx.fillText(m.s, W / 2, 120 + i * 18 - m.t * 20); });
+  ctx.textAlign = 'left';
+}
+
+/* ---------- squad doors + assignment ---------- */
+function updateDoors(dt) {
+  // truck: drive prompt
+  const def = WORLD.def; const cabX = WORLD.truckX + 450;
+  const nearTruck = Math.abs(player.x - cabX) < 60 && player.onGround && !arena.active;
+  WORLD.nearTruck = nearTruck;
+  if (nearTruck && edge.use && !shop.open && !assign.open) {
+    if (def.driveRequires && !restored[def.driveRequires]) { restoredBanner.t = 2; restoredBanner.text = 'The DC is still dark. Clear the ' + DOORS[0].name + ' first.'; }
+    else startDrive(def.driveTo);
+    return;
+  }
+  for (const d of DOORS) {
+    d.t += dt;
+    if (d.done || arena.active) continue;
+    if (player.x > d.x - 30 && player.x < d.x + 10 && player.onGround) {
+      const need = Math.min(d.need, packAll());
+      if (packAll() < 2) { player.x = d.x - 32; player.vx = -120; restoredBanner.t = 1.5; restoredBanner.text = 'Squad door — you need teammates. Free the pack first.'; continue; }
+      // open the assignment overlay
+      assign.open = true; assign.door = d; assign.need = need; assign.sel = new Set(); assign.cursor = 0; assign.lh = assign.rh = 1;
+      for (let i = 0; i < Math.min(need - 1, pack.length); i++) assign.sel.add(i); // leader always goes
+      player.x = d.x - 34; player.vx = 0;
+    }
+  }
+  if (assign.open) {
+    if (tk.left && !assign.lh) assign.cursor = (assign.cursor + pack.length - 1) % pack.length; assign.lh = tk.left;
+    if (tk.right && !assign.rh) assign.cursor = (assign.cursor + 1) % pack.length; assign.rh = tk.right;
+    if (edge.use) { if (assign.sel.has(assign.cursor)) assign.sel.delete(assign.cursor); else assign.sel.add(assign.cursor); }
+    if (tapSwap >= 0) { if (assign.sel.has(tapSwap)) assign.sel.delete(tapSwap); else assign.sel.add(tapSwap); tapSwap = -2; }
+    if (edge.jump && assign.sel.size + 1 >= assign.need) enterArena(assign.door);
+    if (edge.dash) { assign.open = false; player.x = assign.door.x - 60; }
+  }
+}
+function enterArena(d) {
+  assign.open = false;
+  pack.forEach((f, i) => { f.holding = !assign.sel.has(i); if (f.holding) { f.x = d.x - 40 - (i % 4) * 22; f.y = groundYAt(f.x); } });
+  arena.active = true; arena.x0 = d.x0; arena.x1 = d.x1; arena.door = d; arena.t = 0; arena.hold = 100;
+  waveState.paused = true; waveState.toSpawn = 0;
+  for (let i = enemies.length - 1; i >= 0; i--) if (!enemies[i].d.cocoon && !enemies[i].d.boss) { enemies[i].dead = true; enemies.splice(i, 1); } waveState.alive = 0;
+  player.x = d.x0 + 40; player.vx = 0; crumbs.length = 0; for (const f of pack) if (!f.holding) { f.x = player.x - 20; f.y = player.y; }
+  const b = spawnBoss(d.boss, d.x1 - 160, groundYAt(d.x1 - 160)); arena.boss = b; if (b) b.tx = clamp(player.x + 320, d.x0 + 60, d.x1 - 60);
+  restoredBanner.t = 2.5; restoredBanner.text = d.name + '  ·  the rest of the pack holds the door';
+  if (d.boss === 'fogserver') weather = 1;
+}
+function onBossDead(e) {
+  arena.active = false; const d = arena.door; if (d) d.done = true;
+  for (const f of pack) f.holding = false; crumbs.length = 0; for (const f of pack) { f.x = player.x - 20; f.y = player.y; }
+  waveState.paused = false; waveState.cd = 6;
+  restored[WORLD.id] = true;
+  restoredBanner.t = 4; restoredBanner.text = WORLD.name.toUpperCase() + ' RESTORED  ·  ' + WORLD.def.driveLabel.toLowerCase() + ' from the truck';
+  bucks.n += 40; bucks.total += 40;
+  for (let i = 0; i < 30; i++) shards.push({ x: e.x, y: e.y - 30, vx: rnd(-300, 300), vy: rnd(-400, -100), t: 0, v: 1 });
+  if (WORLD.id === 'taunton') weather = 0;
+}
+function drawDoors() {
+  for (const d of DOORS) {
+    ctx.save(); ctx.translate(d.x, groundYAt(d.x));
+    const a = d.done ? 0.35 : 0.85 + 0.15 * Math.sin(d.t * 4);
+    // gate: two static pylons and a shimmering field
+    ctx.fillStyle = '#243447'; rr(ctx, -30, -120, 12, 120, 3); ctx.fill(); rr(ctx, 18, -120, 12, 120, 3); ctx.fill();
+    if (!d.done) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; const fg = ctx.createLinearGradient(-18, 0, 18, 0); fg.addColorStop(0, rgba([200, 130, 255], 0.05)); fg.addColorStop(0.5, rgba([200, 130, 255], 0.35 * a)); fg.addColorStop(1, rgba([200, 130, 255], 0.05)); ctx.fillStyle = fg; ctx.fillRect(-18, -116, 36, 116); for (let k = 0; k < 5; k++) { const y = -116 + ((d.t * 50 + k * 23) % 116); ctx.fillStyle = rgba([60, 220, 255], 0.35); ctx.fillRect(-18, y, 36, 1.5); } ctx.restore(); }
+    else { ctx.fillStyle = rgba([120, 255, 140], 0.9); ctx.beginPath(); ctx.arc(-24, -126, 4, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(24, -126, 4, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = 'rgba(16,26,46,.75)'; rr(ctx, -60, -150, 120, 22, 6); ctx.fill(); ctx.fillStyle = d.done ? '#7fe0a0' : '#f2b544'; ctx.font = 'bold 10px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(d.done ? 'CLEARED' : 'SQUAD DOOR  ·  ' + d.need + ' NEEDED', 0, -135);
+    ctx.restore();
+  }
+  // truck prompt
+  if (WORLD.nearTruck) { const cabX = WORLD.truckX + 450; ctx.fillStyle = 'rgba(16,26,46,.7)'; rr(ctx, cabX - 70, 250, 140, 20, 6); ctx.fill(); ctx.fillStyle = '#f2b544'; ctx.font = 'bold 11px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('E  ·  ' + WORLD.def.driveLabel, cabX, 264); }
+  ctx.textAlign = 'left';
+}
+function drawAssignHUD() {
+  if (restoredBanner.t > 0) { restoredBanner.t -= 1 / 60; const a = Math.min(1, restoredBanner.t); ctx.textAlign = 'center'; ctx.font = 'bold 20px Georgia, serif'; ctx.fillStyle = 'rgba(16,26,46,.6)'; const tw = ctx.measureText(restoredBanner.text).width; rr(ctx, W / 2 - tw / 2 - 16, H * 0.14 - 20, tw + 32, 32, 8); ctx.fill(); ctx.fillStyle = rgba([242, 181, 68], a); ctx.fillText(restoredBanner.text, W / 2, H * 0.14 + 3); }
+  if (arena.active) { arena.t += 1 / 60; const b = arena.boss; if (b && !b.dead) { ctx.fillStyle = 'rgba(16,26,46,.6)'; rr(ctx, W / 2 - 160, 104, 320, 30, 8); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fillRect(W / 2 - 150, 110, 300, 8); ctx.fillStyle = b.targetable ? '#ff8a5a' : 'rgba(255,138,90,.4)'; ctx.fillRect(W / 2 - 150, 110, 300 * b.hp / b.maxHp, 8); ctx.fillStyle = '#f6ecd8'; ctx.font = 'bold 10px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(arena.door.name + (b.targetable ? '' : '  ·  hiding in the fog'), W / 2, 129); }
+    const held = pack.filter(f => f.holding).length; if (held) { ctx.textAlign = 'right'; ctx.font = '11px system-ui, sans-serif'; ctx.fillStyle = 'rgba(246,236,216,.75)'; ctx.fillText(held + ' holding the door', W - 14, H - 206); } }
+  if (!assign.open) return;
+  ctx.fillStyle = 'rgba(16,26,46,.78)'; ctx.fillRect(0, 0, W, H);
+  ctx.textAlign = 'center'; ctx.font = 'bold 26px Georgia, serif'; ctx.fillStyle = '#f2b544'; ctx.fillText('SQUAD DOOR — ' + assign.door.name, W / 2, 96);
+  ctx.font = '12px system-ui, sans-serif'; ctx.fillStyle = '#b9c5d6'; ctx.fillText('Pick ' + (assign.need - 1) + ' to go in with ' + hero.name + '. Everyone else holds the door.', W / 2, 120);
+  ctx.fillText('←/→ move  ·  E or tap to toggle  ·  Jump to go  ·  Dash to back out', W / 2, 138);
+  const sz = 56, gap = 12; const n = pack.length; const total = n * sz + (n - 1) * gap; let x = W / 2 - total / 2; const y = 190; packUI.rects.length = 0;
+  pack.forEach((f, i) => { const sel = assign.sel.has(i), cur = i === assign.cursor; ctx.save(); rr(ctx, x, y, sz, sz, 9); ctx.clip(); ctx.globalAlpha = sel ? 1 : 0.45; ctx.drawImage(portraitFor(f.hero), x, y, sz, sz); ctx.restore(); ctx.strokeStyle = cur ? '#f2b544' : sel ? 'rgba(120,255,140,.9)' : 'rgba(246,236,216,.2)'; ctx.lineWidth = cur ? 3 : 2; rr(ctx, x, y, sz, sz, 9); ctx.stroke(); if (sel) { ctx.fillStyle = '#7fe0a0'; ctx.beginPath(); ctx.arc(x + sz - 6, y + 6, 6, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#16223a'; ctx.font = 'bold 9px system-ui'; ctx.fillText('✓', x + sz - 6, y + 9); } ctx.fillStyle = '#f6ecd8'; ctx.font = '10px system-ui, sans-serif'; ctx.fillText(f.hero.name, x + sz / 2, y + sz + 14); ctx.fillStyle = rgb(weaponOf(f.hero).color); ctx.font = '9px system-ui, sans-serif'; ctx.fillText(weaponOf(f.hero).name, x + sz / 2, y + sz + 26); packUI.rects.push({ x, y, w: sz, h: sz, i }); x += sz + gap; });
+  const ok = assign.sel.size + 1 >= assign.need;
+  ctx.font = 'bold 15px Georgia, serif'; ctx.fillStyle = ok ? '#7fe0a0' : '#ff8a5a'; ctx.fillText((assign.sel.size + 1) + ' / ' + assign.need + (ok ? '  —  ready. Jump to go in.' : '  —  pick more'), W / 2, 330);
+  ctx.textAlign = 'left';
+}
+
+/* ---------- bosses ---------- */
+ENEMY.fogserver = { hp: 130, w: 84, h: 96, speed: 0, dmg: 1, shards: 0, boss: 1, color: [180, 200, 255] };
+function spawnBoss(type, x, y) {
+  const e = spawnEnemy(type, x, y); if (!e) return null;
+  e.born = 0; e.targetable = false; e.phase = 'hide'; e.pt = 1.2; e.alpha = 0; e.lastQuarter = 4; e.name = type; e.tx = x; return e;
+}
+function updateBoss(e, dt) {
+  e.t += dt; if (e.hit > 0) e.hit -= dt;
+  const dx = player.x - e.x;
+  if (e.type === 'fogserver') {
+    e.pt -= dt;
+    const inFog = e.phase === 'hide';
+    e.alpha += ((inFog ? 0.08 : 1) - e.alpha) * Math.min(1, dt * 4);
+    e.targetable = !inFog;
+    if (e.phase === 'hide') { // drift through the fog to a new spot
+      e.vx += clamp(Math.sign(e.tx - e.x) * 170 - e.vx, -500 * dt, 500 * dt); if (Math.abs(e.tx - e.x) < 10) e.vx *= 0.8;
+      if (e.pt <= 0) { e.phase = 'tell'; e.pt = 0.8; e.vx = 0; e.facing = Math.sign(dx) || 1; }
+    } else if (e.phase === 'tell') { e.vx *= 0.8; if (e.pt <= 0) { e.phase = 'lunge'; e.pt = 0.7; e.facing = Math.sign(dx) || 1; e.vx = e.facing * 520; shake = Math.max(shake, 0.1); } }
+    else if (e.phase === 'lunge') { if (e.wall) { e.vx = 0; } if (e.pt <= 0) { e.phase = 'rest'; e.pt = 1.6; e.vx = 0; } }
+    else if (e.phase === 'rest') { e.vx *= 0.9; if (e.pt <= 0) { e.phase = 'hide'; e.pt = 1.4 + Math.random(); e.tx = clamp(player.x + (Math.random() < 0.5 ? -1 : 1) * rnd(220, 360), arena.x0 + 60, arena.x1 - 60); } }
+    // quarter-health adds
+    const q = Math.ceil(e.hp / e.maxHp * 4); if (q < e.lastQuarter) { e.lastQuarter = q; for (let i = 0; i < 3; i++) { const f = spawnEnemy('flicker', e.x + (i - 1) * 30, e.y); if (f) { f.vy = -350; waveState.alive++; } } shake = Math.max(shake, 0.15); }
+    e.vy += G * dt; if (e.vy > 900) e.vy = 900; moveBody(e, dt, e.w / 2);
+    e.x = clamp(e.x, arena.x0 + e.w / 2, arena.x1 - e.w / 2);
+    // contact
+    if (player.inv <= 0 && player.dead <= 0 && e.phase !== 'hide') { const ox = Math.abs(e.x - player.x) < (e.w + player.w) / 2 - 4, oy = player.y > e.y - e.h && player.y - player.h < e.y; if (ox && oy && player.dashT <= 0) hurtPlayer(e.d.dmg, e.x); }
+    // fog wisps
+    if (Math.random() < dt * 8) spawn({ k: 'steam', x: e.x + rnd(-40, 40), y: e.y - rnd(0, 90), vx: rnd(-20, 20), vy: rnd(-10, 10), life: 1.2, t: 0, r: rnd(8, 16) });
+  }
+}
+function drawBoss(c, e) {
+  c.save(); c.translate(e.x, e.y); c.globalAlpha = e.alpha; c.scale(e.facing, 1);
+  const w = e.w, h = e.h, tell = e.phase === 'tell';
+  glitchDraw(c, e, (g, tint) => {
+    const base = tint ? rgb(tint) : '#1a2030', edge = tint ? rgb(tint) : (e.hit > 0 ? '#fff' : rgb(e.d.color));
+    // a server rack on stilt legs
+    g.fillStyle = base; g.strokeStyle = edge; g.lineWidth = 2;
+    for (const s of [-1, 1]) { g.beginPath(); g.moveTo(s * 18, -14); g.lineTo(s * 30 + Math.sin(e.t * 12) * 3 * s, 0); g.stroke(); }
+    rr(g, -w / 2, -h, w, h - 14, 6); g.fill(); g.stroke();
+    if (!tint) {
+      for (let k = 0; k < 6; k++) { const y = -h + 8 + k * 13; g.fillStyle = '#243447'; g.fillRect(-w / 2 + 6, y, w - 12, 9); g.fillStyle = tell ? '#ff5a5a' : (k % 2 ? rgb(e.d.color) : '#7fe0a0'); g.fillRect(w / 2 - 14, y + 2, 4, 4); if (((e.t * 6) | 0) % 6 === k) g.fillRect(w / 2 - 22, y + 2, 4, 4); }
+      // the "face": two status LEDs
+      g.fillStyle = tell ? '#ff5a5a' : '#fff'; g.fillRect(-14, -h + 30, 6, 6); g.fillRect(6, -h + 30, 6, 6);
+      // cables trailing
+      g.strokeStyle = edge; g.lineWidth = 1.5; for (let k = 0; k < 4; k++) { g.beginPath(); g.moveTo(-w / 2 + 10 + k * 8, -14); g.quadraticCurveTo(-w / 2 + k * 8 - 10, 4 + Math.sin(e.t * 5 + k) * 4, -w / 2 + k * 12 - 16, 10); g.stroke(); }
+    }
+  });
+  c.restore();
+}
+bakeShared();
+loadWorld('easton');
 buildTitle();
 requestAnimationFrame(frame);
 // warm one render so the background shows under the title
