@@ -567,7 +567,7 @@ function render() {
   drawHazards();
   for (const p of parts) if (p.k === 'trail') { ctx.globalAlpha = 0.35 * (1 - p.t / p.life); drawHero(ctx, hero, p.x, p.y, p.f, { t: 0, air: true }, null); ctx.globalAlpha = 1; }
   const hideHero = demo.active && DEMO_SCRIPT[demo.idx] && DEMO_SCRIPT[demo.idx].hideHero;
-  if (!hideHero && !forklift.mounted && !(player.inv > 0 && player.inv < 1.15 && Math.floor(gameTime * 20) % 2)) drawHero(ctx, hero, player.x, player.y, player.facing, { t: player.t, run: player.run, moving: player.moving, air: !player.onGround, squash: player.squash, stretch: player.stretch, big: player.big || 1 }, nearestLight(player.x, player.y - 30, night));
+  if (!hideHero && !forklift.mounted && !(player.inv > 0 && player.inv < 1.15 && Math.floor(gameTime * 20) % 2)) drawHero(ctx, hero, player.x, player.y, player.facing, { t: player.t, run: player.run, moving: player.moving, air: !player.onGround, squash: player.squash, stretch: player.stretch, big: player.big || 1, hurt: player.inv > 0.85 && player.inv < 1.15, dead: player.dead > 0 ? (1.6 - player.dead) * 2 : 0 }, nearestLight(player.x, player.y - 30, night));
   renderCombatFront(night);
   drawPortal();
   drawStoryFront();
@@ -645,7 +645,6 @@ function render() {
   drawOptions();
   drawEnding();
   drawDemoHUD();
-  if (catnip.n > 0) { ctx.font = 'bold 11px system-ui, sans-serif'; ctx.fillStyle = 'rgba(16,26,46,.55)'; rr(ctx, 14, H - 110, 130, 24, 8); ctx.fill(); ctx.fillStyle = '#d8ff4a'; ctx.fillText('MEOWIJUANA ×' + catnip.n + '  ·  X', 24, H - 94); }
 }
 
 function drawEmissive(cx, cy, night) {
@@ -716,10 +715,6 @@ function drawTiled(img, par, y, tint, alpha, drift, tint2, rim) {
 function drawHUD(night) {
   ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   // name plate
-  ctx.font = 'bold 14px Georgia, serif'; const nameW = ctx.measureText(hero.name).width; const roleTxt = hero.role + '  ·  ' + hero.perk; ctx.font = '11px system-ui, sans-serif'; const roleW = ctx.measureText(roleTxt).width;
-  ctx.fillStyle = 'rgba(16,26,46,.55)'; rr(ctx, 14, H - 44, Math.max(200, nameW + roleW + 46), 30, 8); ctx.fill();
-  ctx.font = 'bold 14px Georgia, serif'; ctx.fillStyle = '#f2b544'; ctx.fillText(hero.name, 26, H - 24);
-  ctx.font = '11px system-ui, sans-serif'; ctx.fillStyle = '#b9c5d6'; ctx.fillText(roleTxt, 26 + nameW + 14, H - 24);
   // time + weather chip
   const hh = Math.floor(hour), mm = Math.floor((hour % 1) * 60); const ap = hh >= 12 ? 'PM' : 'AM'; const h12 = ((hh + 11) % 12) + 1;
   const label = h12 + ':' + (mm < 10 ? '0' : '') + mm + ' ' + ap + '   ' + WEATHER[weather];
@@ -729,8 +724,8 @@ function drawHUD(night) {
   ctx.font = 'italic 12px Georgia, serif'; ctx.fillStyle = 'rgba(246,236,216,.7)'; ctx.fillText(WORLD.location, 14 + tw + 50, 31);
   // touch controls
   if (touch.used) {
-    ctx.save(); ctx.globalAlpha = 0.55;
-    for (const b of BTN) { if (b.when && !b.when()) continue; ctx.fillStyle = touch.btn[b.id] ? 'rgba(242,181,68,.7)' : 'rgba(16,26,46,.5)'; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = 'rgba(246,236,216,.6)'; ctx.lineWidth = 2; ctx.stroke(); ctx.fillStyle = '#f6ecd8'; ctx.font = 'bold ' + (b.r > 24 ? 12 : 11) + 'px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(b.label, b.x, b.y + 4); }
+    ctx.save(); ctx.globalAlpha = typeof touchAlpha !== 'undefined' ? touchAlpha.v : 0.55;
+    for (const b of BTN) { if (b.when && !b.when()) continue; if (typeof drawTouchButton === 'function') { drawTouchButton(b); continue; } ctx.fillStyle = touch.btn[b.id] ? 'rgba(242,181,68,.7)' : 'rgba(16,26,46,.5)'; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = 'rgba(246,236,216,.6)'; ctx.lineWidth = 2; ctx.stroke(); ctx.fillStyle = '#f6ecd8'; ctx.font = 'bold ' + (b.r > 24 ? 12 : 11) + 'px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(b.label, b.x, b.y + 4); }
     if (touch.stick !== null) { ctx.strokeStyle = 'rgba(246,236,216,.5)'; ctx.beginPath(); ctx.arc(touch.sx, touch.sy, 44, 0, Math.PI * 2); ctx.stroke(); ctx.fillStyle = 'rgba(242,181,68,.6)'; ctx.beginPath(); ctx.arc(touch.sx + touch.dx * 34, touch.sy, 18, 0, Math.PI * 2); ctx.fill(); }
     ctx.restore();
   }
