@@ -32,6 +32,7 @@
   #kidSay:before { content:''; position:absolute; left:-8px; top:50%; margin-top:-6px; border: 6px solid transparent; border-right-color: rgba(242,181,68,.35); }
   #demoBtn { margin-top: 10px; padding: 8px 22px; font: bold 13px system-ui, -apple-system, sans-serif; letter-spacing: .12em; color:#f2b544; background: rgba(242,181,68,.08); border: 1.5px solid rgba(242,181,68,.5); border-radius: 8px; cursor:pointer; }
   #demoBtn:hover { background: rgba(242,181,68,.2); }
+  #disclaimer { margin: 10px auto 0; max-width: 560px; font: italic 11px Georgia, serif; color:#8f9db3; line-height:1.4; }
   #hint { margin-top: 10px; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: clamp(10px, 1.8vmin, 13px); color:#8f9db3; }
   #rotate { display:none; position:fixed; inset:0; z-index:20; background:#101a2e; color:#f6ecd8; align-items:center; justify-content:center; text-align:center; font-family: Georgia, serif; font-size: 20px; padding: 24px; }
   @media (orientation: portrait) and (max-width: 900px) { #rotate { display:flex; } }
@@ -47,6 +48,7 @@
     <div id="grid"></div>
     <div id="kidRow"><canvas id="kid" width="140" height="120"></canvas><div id="kidSay">At least watch the demo and learn more about this Phillips adventure!</div></div>
     <button id="demoBtn">&#9654; WATCH DEMO</button>
+    <div id="disclaimer">This story is fiction. It does not depict actual events at Phillips Pet Food &amp; Supplies or in its history. The people are real and beloved; the robots are not.</div>
     <div id="hint">Move: arrows / A D &nbsp;•&nbsp; Jump: space / W &nbsp;•&nbsp; Dash: shift / K &nbsp;•&nbsp; Use: E &nbsp;•&nbsp; Take point: C &nbsp;•&nbsp; Super: V &nbsp;•&nbsp; Sound: M &nbsp;•&nbsp; Weather: Q &nbsp;•&nbsp; Time: T</div>
   </div>
 </div>
@@ -913,6 +915,7 @@ function render() {
   renderCombatFront(night);
   drawPortal();
   drawStoryFront();
+  drawBubbles();
   // front particles
   for (const p of parts) {
     if (p.k === 'mote') { const a = Math.sin(Math.PI * clamp(p.t / p.life, 0, 1)); ctx.fillStyle = rgba(p.c, 0.35 * a); ctx.beginPath(); ctx.arc(p.x, p.y, 1.6, 0, Math.PI * 2); ctx.fill(); }
@@ -970,6 +973,7 @@ function render() {
   // paper grain
   ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = 0.35; ctx.drawImage(LAYERS.grain, 0, 0); ctx.restore();
   drawSepia();
+  ctx.save(); ctx.translate(-cx, -cy); drawGregGhost(night); ctx.restore(); // Greg stays gray even in sepia
   drawHUD(night);
   drawCombatHUD();
   drawCrewHUD();
@@ -1411,7 +1415,7 @@ function updateCombat(dt) {
   updateAplus(dt);
   updateLockout(dt);
   updateWrecks(dt);
-  updateSuper(dt); updateBreakpoints(); updatePortal(dt);
+  updateSuper(dt); updateBreakpoints(); updatePortal(dt); updateGregGhost(dt);
   if (edge.sup) useSuper();
   if (shop.open || talk.open) return;
   rebuildHash();
@@ -3174,11 +3178,12 @@ function demoCrew(names) { crew.length = 0; for (const n of names) { const ch = 
 function demoBoss(type) { const d = WORLD.def.door; if (!d) return; stage.active = true; stage.door = d; stage.step = 2; stage.fails = 0; arena.active = true; arena.x0 = d.x0; arena.x1 = d.x1; arena.door = d; const b = spawnBoss(type, d.x1 - 160, groundYAt(d.x1 - 160)); arena.boss = b; if (b) b.tx = clamp(player.x + 320, d.x0 + 60, d.x1 - 60); player.x = d.x0 + 60; player.y = groundYAt(player.x); for (const f of crew) { f.x = player.x - 30; f.y = player.y; } }
 const KID_BLAINE = { name: 'Blaine', role: 'a boy', skin: '#f1c9a5', hair: '#a8632c', style: 'cap', shirt: '#c25a3a', pants: '#2f6f9f', acc: 'none', kid: true };
 const DEMO_SCRIPT = [
-  { world: 'easton', x: 700, hour: 18.6, weather: 0, cut: 'card', title: 'HECKTOWN ROAD', sub: 'a Phillips Pet adventure', cap: '', dur: 5, setup: () => { story.weaponsOnline = false; } },
+  { world: 'easton', x: 700, hour: 18.6, weather: 0, cut: 'card', title: 'HECKTOWN ROAD', sub: 'a Phillips Pet adventure', cap: '', dur: 5, setup: () => { story.weaponsOnline = false; gregGhost.timer = 0; } },
+  { world: 'easton', x: 700, hour: 18.6, weather: 0, cut: 'card', title: 'A work of fiction', sub: 'Nothing here depicts actual events at Phillips Pet Food & Supplies or in its history. The people are real and beloved. The robots are not. Greg is a matter of some debate.', cap: '', dur: 7, small: true },
   { world: 'prologue', x: 200, hour: 15.5, weather: 0, cut: 'card', title: '1938', sub: 'Germansville, Pennsylvania', cap: '', dur: 4 },
-  { world: 'prologue', x: 200, hour: 15.5, weather: 0, cap: 'One feed store. Purina chows, a wagon, a mare, and a promise made on a rainy afternoon.', dur: 12, goals: [{ x: 360, y: 424, act: 'use' }, { x: () => WORLD.horse.x - 30, act: 'use', pause: 1.2 }, { x: 1000, act: 'use' }, { x: 2260, act: 'use' }] },
+  { world: 'prologue', x: 200, hour: 15.5, weather: 0, cap: 'One feed store. Purina chows, a wagon, a mare, and a promise made on a rainy afternoon.', dur: 12, setup2: () => { gregGhost.timer = 5; }, goals: [{ x: 360, y: 424, act: 'use' }, { x: () => WORLD.horse.x - 30, act: 'use', pause: 1.2 }, { x: 1000, act: 'use' }, { x: 2260, act: 'use' }] },
   { world: 'prologue', x: 200, hour: 16.5, weather: 0, cut: 'card', title: 'SOME YEARS LATER', sub: 'the same yard', cap: '', dur: 4 },
-  { world: 'prologue', x: 560, hour: 16.5, weather: 0, cap: 'A boy named Blaine, his grandfather, and the lesson that became a company.', dur: 15, hideHero: true, goals: [{ wait: 1.5 }, { say: 'founder', text: '"Farmers are counting on that feed, Blaine. Rain or no rain, it goes today."', pause: 4.5 }, { say: 'kid', text: 'Blaine: "Even in the rain, Grandpa?"', pause: 3.5 }, { say: 'founder', text: '"Especially in the rain. Show up for the people who count on you. That\'s the whole business."', pause: 5 }], setup: () => { story.weaponsOnline = false; packages.length = 0; WORLD.location = 'Phillips Feed  ·  Germansville, Pennsylvania  ·  some years later'; for (let i = npcs.length - 1; i >= 0; i--) npcs.splice(i, 1); const f = addNPC({ look: { name: 'The Founder', role: 'Grandpa', skin: '#2a2a2a', hair: '#1a1a1a', style: 'cap', shirt: '#2a2a2a', pants: '#1a1a1a', acc: 'none' }, x: 620, y: 440, facing: -1, lines: [] }); const k = addNPC({ look: KID_BLAINE, x: 570, y: 440, facing: 1, lines: [] }); WORLD.demoFounder = f; WORLD.demoKid = k; } },
+  { world: 'prologue', x: 560, hour: 16.5, weather: 0, cap: 'A boy named Blaine, his grandfather, and the lesson that became a company.', dur: 15, hideHero: true, setup2: () => { gregGhost.timer = 9; }, goals: [{ wait: 1.5 }, { say: 'founder', text: '"Farmers are counting on that feed, Blaine. Rain or no rain, it goes today."', pause: 4.5 }, { say: 'kid', text: 'Blaine: "Even in the rain, Grandpa?"', pause: 3.5 }, { say: 'founder', text: '"Especially in the rain. Show up for the people who count on you. That\'s the whole business."', pause: 5 }], setup: () => { story.weaponsOnline = false; packages.length = 0; WORLD.location = 'Phillips Feed  ·  Germansville, Pennsylvania  ·  some years later'; for (let i = npcs.length - 1; i >= 0; i--) npcs.splice(i, 1); const f = addNPC({ look: { name: 'The Founder', role: 'Grandpa', skin: '#2a2a2a', hair: '#1a1a1a', style: 'cap', shirt: '#2a2a2a', pants: '#1a1a1a', acc: 'none' }, x: 620, y: 440, facing: -1, lines: [] }); const k = addNPC({ look: KID_BLAINE, x: 570, y: 440, facing: 1, lines: [] }); WORLD.demoFounder = f; WORLD.demoKid = k; } },
   { world: 'easton', x: 700, hour: 18.6, weather: 0, cut: 'card', title: 'TODAY', sub: 'Easton, Pennsylvania', cap: '', dur: 4 },
   { world: 'easton', x: 700, hour: 18.6, weather: 0, cap: 'Nearly ninety years later, the grandson runs the company his grandfather started — and still tells the story at the front door.', dur: 9, goals: [{ x: 850, act: 'use', pause: 4 }], setup: () => { story.weaponsOnline = false; for (let i = npcs.length - 1; i >= 0; i--) if (npcs[i].hero) npcs.splice(i, 1); addBlaine(890); } },
   { world: 'easton', x: 300, hour: 23.9, weather: 0, cut: 'card', title: 'TONIGHT', sub: '11:52 PM  ·  the cutover', cap: '', dur: 4 },
@@ -3234,7 +3239,7 @@ function drawCardCutscene(sc, t) {
   ctx.fillStyle = 'rgba(8,10,18,' + (0.92 * a) + ')'; ctx.fillRect(0, 0, W, H);
   ctx.save(); ctx.globalAlpha = a; ctx.textAlign = 'center';
   ctx.font = (sc.small ? 'italic 26px' : 'bold 46px') + ' Georgia, serif'; ctx.fillStyle = '#f2b544'; ctx.fillText(sc.title, W / 2, H / 2 - 6);
-  ctx.font = 'italic 16px Georgia, serif'; ctx.fillStyle = '#f6ecd8'; ctx.fillText(sc.sub || '', W / 2, H / 2 + 30);
+  ctx.font = 'italic 16px Georgia, serif'; ctx.fillStyle = '#f6ecd8'; { const words = (sc.sub || '').split(' '); const lines = []; let line = ''; for (const wd of words) { const tt = line + wd + ' '; if (ctx.measureText(tt).width > 700) { lines.push(line.trim()); line = wd + ' '; } else line = tt; } lines.push(line.trim()); lines.forEach((l, i) => ctx.fillText(l, W / 2, H / 2 + 30 + i * 22)); }
   ctx.fillStyle = 'rgba(242,181,68,.6)'; ctx.fillRect(W / 2 - 60, H / 2 + 46, 120, 2);
   ctx.restore(); ctx.textAlign = 'left';
 }
@@ -3823,6 +3828,28 @@ const _loadWorld2 = loadWorld;
 loadWorld = function (id, spawnAt) { _loadWorld2(id, spawnAt); setupBreakpoints(); portal.active = false; superState.active = 0; player.big = 1; if (story.ending && id === 'easton' && !npcs.some(n => n.look && n.look.name === 'Blaine')) addBlaine(880); };
 const _respawn = respawn;
 respawn = function () { _respawn(); };
+
+/* ---------- Greg haunts 1938 ---------- */
+const gregGhost = { active: false, x: 0, dir: 1, t: 0, said: false, timer: 0, look: null };
+const GHOST_REMARKS = ['Hmm. That fellow sure is interesting.', 'Does he work here?', 'He was here yesterday, too. And the day before.', 'I don\'t remember hiring him.', 'Grandpa, why is that man gray?', 'He says he counts things. What things?', 'Nice fellow. Never seems to leave.'];
+function gregAppears() { const g = ROSTER.find(r => r.name === 'Greg'); if (!g) return; gregGhost.active = true; gregGhost.look = g; gregGhost.dir = Math.random() < 0.5 ? 1 : -1; gregGhost.x = gregGhost.dir > 0 ? camera.x - 60 : camera.x + W + 60; gregGhost.t = 0; gregGhost.said = false; }
+function updateGregGhost(dt) {
+  const era = WORLD.id === 'prologue' || WORLD.id === 'past'; if (!era) { gregGhost.active = false; return; }
+  if (!gregGhost.active) { gregGhost.timer -= dt; if (gregGhost.timer <= 0) { gregGhost.timer = rnd(9, 16); if (Math.random() < 0.75 || demo.active) gregAppears(); } return; }
+  gregGhost.t += dt; gregGhost.x += gregGhost.dir * 62 * dt;
+  // people notice him
+  if (!gregGhost.said) { for (const n of npcs) { if (n.hero) continue; if (Math.abs(n.x - gregGhost.x) < 90) { gregGhost.said = true; n.bubble = n.look.kid ? GHOST_REMARKS[4] : GHOST_REMARKS[(Math.random() * 4) | 0 + (Math.random() < 0.5 ? 0 : 4) % GHOST_REMARKS.length] || GHOST_REMARKS[0]; if (n.bubble === GHOST_REMARKS[4] && !n.look.kid) n.bubble = GHOST_REMARKS[0]; n.bubbleT = 4; break; } } }
+  if (gregGhost.x < camera.x - 120 || gregGhost.x > camera.x + W + 120) gregGhost.active = false;
+}
+function drawGregGhost(night) {
+  if (!gregGhost.active) return;
+  const g = gregGhost.look; const y = groundYAt(gregGhost.x);
+  drawHero(ctx, g, gregGhost.x, y, gregGhost.dir, { t: gregGhost.t, run: (gregGhost.t * 1.2) % 1, moving: true }, nearestLight(gregGhost.x, y - 30, night));
+  if (gregGhost.t > 1 && Math.floor(gregGhost.t) % 4 === 0) { ctx.fillStyle = 'rgba(16,26,46,.7)'; rr(ctx, gregGhost.x - 44, y - 92, 88, 16, 5); ctx.fill(); ctx.fillStyle = '#e8e8f0'; ctx.font = 'bold 9px monospace'; ctx.textAlign = 'center'; ctx.fillText('…counting…', gregGhost.x, y - 80); ctx.textAlign = 'left'; }
+}
+function drawBubbles() {
+  for (const n of npcs) { if (!n.bubbleT || n.bubbleT <= 0) continue; n.bubbleT -= 1 / 60; const a = Math.min(1, n.bubbleT); ctx.save(); ctx.globalAlpha = a; ctx.font = 'italic 11px Georgia, serif'; const tw = ctx.measureText(n.bubble).width + 18; const bx = n.x - tw / 2, by = n.y - 118; ctx.fillStyle = 'rgba(246,236,216,.92)'; rr(ctx, bx, by, tw, 22, 8); ctx.fill(); ctx.beginPath(); ctx.moveTo(n.x - 5, by + 22); ctx.lineTo(n.x + 5, by + 22); ctx.lineTo(n.x, by + 30); ctx.closePath(); ctx.fill(); ctx.fillStyle = '#243447'; ctx.textAlign = 'center'; ctx.fillText(n.bubble, n.x, by + 15); ctx.restore(); ctx.textAlign = 'left'; }
+}
 bakeShared();
 player.hero = hero;
 loadWorld('easton');
