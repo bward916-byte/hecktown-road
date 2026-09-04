@@ -588,9 +588,11 @@ function drawTrailer(g, x, y, gy) {
   g.fillStyle = '#243447'; g.font = 'bold 26px Georgia, serif'; g.textAlign = 'center'; g.fillText('PHILLIPS', x + 210, y + 44);
   g.fillStyle = '#f2b544'; g.fillRect(x + 90, y + 52, 240, 4);
   g.fillStyle = '#5b6670'; g.font = '10px system-ui, sans-serif'; g.fillText('PET FOOD & SUPPLIES  •  SINCE 1938', x + 210, y + 70);
-  // chassis: from the box down to the axle, plus landing gear
-  g.fillStyle = '#2c3038'; g.fillRect(x + 20, y + 92, 380, 8); g.fillRect(x + 280, y + 92, 100, wy - (y + 92)); g.fillRect(x + 60, y + 100, 6, wy - y - 100 + 12);
-  for (const wx of [x + 300, x + 345]) { g.fillStyle = '#1b1d22'; g.beginPath(); g.arc(wx, wy, 20, 0, Math.PI * 2); g.fill(); g.fillStyle = '#6a6d75'; g.beginPath(); g.arc(wx, wy, 9, 0, Math.PI * 2); g.fill(); }
+  // chassis: frame rail under the box, tandem axles at the REAR (left), landing gear near the kingpin
+  g.fillStyle = '#2c3038'; g.fillRect(x + 20, y + 92, 390, 8); g.fillRect(x + 48, y + 92, 110, wy - (y + 92)); g.fillRect(x + 330, y + 100, 6, wy - y - 100 + 16); g.fillRect(x + 322, wy + 14, 22, 4);
+  for (const wx of [x + 72, x + 118]) { g.fillStyle = '#1b1d22'; g.beginPath(); g.arc(wx, wy, 20, 0, Math.PI * 2); g.fill(); g.fillStyle = '#6a6d75'; g.beginPath(); g.arc(wx, wy, 9, 0, Math.PI * 2); g.fill(); }
+  // rear roll-up door
+  g.fillStyle = '#e0dcd2'; g.fillRect(x + 2, y + 6, 10, 80); g.fillStyle = 'rgba(0,0,0,.15)'; for (let k = 0; k < 8; k++) g.fillRect(x + 2, y + 8 + k * 10, 10, 1);
   // cab
   const cx = x + 420;
   g.fillStyle = '#c0392b'; rr(g, cx, y + 40, 64, 52, 6); g.fill(); rr(g, cx + 20, y + 4, 44, 44, 6); g.fill();
@@ -781,6 +783,7 @@ function updateParts(dt) {
   for (let i = parts.length - 1; i >= 0; i--) {
     const p = parts[i]; p.t += dt;
     if (p.k === 'puff' || p.k === 'steam' || p.k === 'mote') { p.x += p.vx * dt; p.y += p.vy * dt; if (p.k === 'steam') { p.r += dt * 6; p.vx += (windX() * 0.3 - p.vx) * dt; } if (p.k === 'mote') { p.x += Math.sin(p.t * 2 + p.life) * 6 * dt; } }
+    else if (p.k === 'part') { p.vy += G * dt; p.x += p.vx * dt; p.y += p.vy * dt; const gy = groundYAt(p.x); if (p.y >= gy) { p.y = gy; p.vy *= -0.35; p.vx *= 0.6; } }
     else if (p.k === 'leaf') { p.x += (p.vx + Math.sin(p.t * 1.7 + p.ph) * 40) * dt; p.y += (p.vy + Math.cos(p.t * 2.1 + p.ph) * 20) * dt; if (p.y >= groundYAt(p.x) - 2) p.t = 99; }
     else if (p.k === 'rain') { p.x += p.vx * dt; p.y += p.vy * dt; if (p.y >= groundYAt(p.x)) { p.t = 9; if (Math.random() < 0.35) spawn({ k: 'ring', x: p.x, y: groundYAt(p.x), life: 0.35, t: 0 }); } }
     else if (p.k === 'snow') { p.x += (p.vx + Math.sin(p.t * 1.5 + p.ph) * 18) * dt; p.y += p.vy * dt; if (p.y >= groundYAt(p.x) - 2) p.t = 99; }
@@ -963,6 +966,7 @@ function render() {
   drawLedgerHUD();
   drawAudioHUD();
   drawAplus();
+  drawBossIntro();
   drawEnding();
   drawDemoHUD();
   if (catnip.n > 0) { ctx.font = 'bold 11px system-ui, sans-serif'; ctx.fillStyle = 'rgba(16,26,46,.55)'; rr(ctx, 14, H - 110, 130, 24, 8); ctx.fill(); ctx.fillStyle = '#d8ff4a'; ctx.fillText('MEOWIJUANA ×' + catnip.n + '  ·  X', 24, H - 94); }
@@ -1393,6 +1397,7 @@ function updateCombat(dt) {
   updatePrologue(dt);
   updateAplus(dt);
   updateLockout(dt);
+  updateWrecks(dt);
   if (shop.open || talk.open) return;
   rebuildHash();
   updateWaves(dt);
@@ -1455,6 +1460,7 @@ function renderCombatBack(night) {
     if (s.k === 'turret') { ctx.save(); ctx.translate(s.x, s.y); ctx.fillStyle = '#243447'; rr(ctx, -10, -16, 20, 16, 3); ctx.fill(); ctx.fillStyle = rgb(s.c); ctx.fillRect(-8, -14, 16, 2); ctx.fillStyle = '#4a5f7a'; rr(ctx, -6, -28, 12, 13, 3); ctx.fill(); ctx.fillStyle = rgb(s.c); ctx.fillRect(s.facing > 0 ? 4 : -16, -24, 12, 4); ctx.globalAlpha = 0.6; ctx.strokeStyle = rgb(s.c); ctx.lineWidth = 1; ctx.strokeRect(-14, -34, 28, 36); ctx.restore(); }
   }
   drawDoors();
+  drawWrecks();
   for (const e of enemies) if (!e.dead) { if (e.d.boss) drawBoss(ctx, e); else drawEnemy(ctx, e); }
   // coffee machine
   ctx.save(); ctx.translate(COFFEE.x, COFFEE.y); ctx.fillStyle = '#2b2f3a'; rr(ctx, -14, -54, 28, 54, 4); ctx.fill(); ctx.fillStyle = '#c0392b'; rr(ctx, -11, -50, 22, 14, 3); ctx.fill(); ctx.fillStyle = '#e9d27a'; ctx.fillRect(-6, -30, 12, 8); ctx.fillStyle = '#f6ecd8'; ctx.fillRect(-4, -20, 8, 10); ctx.fillStyle = night > 0.3 ? rgba([120, 255, 140], 0.9) : '#3f8f4a'; ctx.fillRect(4, -44, 3, 3);
@@ -1499,7 +1505,8 @@ function renderCombatFront(night) {
   // non-additive particles
   for (const p of parts) {
     const a = 1 - p.t / p.life;
-    if (p.k === 'goo') { ctx.fillStyle = rgba([140, 255, 120], 0.35 * a); ctx.beginPath(); ctx.ellipse(p.x, p.y, 8, 2.5, 0, 0, Math.PI * 2); ctx.fill(); }
+    if (p.k === 'part') drawPartParticle(p);
+    else if (p.k === 'goo') { ctx.fillStyle = rgba([140, 255, 120], 0.35 * a); ctx.beginPath(); ctx.ellipse(p.x, p.y, 8, 2.5, 0, 0, Math.PI * 2); ctx.fill(); }
     else if (p.k === 'coin') { ctx.font = 'bold 12px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = p.v > 0 ? rgba([255, 212, 74], a) : rgba([255, 120, 120], a); ctx.fillText((p.v > 0 ? '+' : '') + p.v, p.x, p.y - (1 - a) * 30); }
   }
 }
@@ -1513,7 +1520,7 @@ function drawCombatHUD() {
   // weapon chip
   const w = weaponOf(hero); if (w && story.weaponsOnline) { ctx.font = '11px system-ui, sans-serif'; const lbl = w.name; const tw = ctx.measureText(lbl).width; ctx.fillStyle = 'rgba(16,26,46,.55)'; rr(ctx, W / 2 - tw / 2 - 12, 14, tw + 24, 24, 8); ctx.fill(); ctx.fillStyle = rgb(w.color); ctx.beginPath(); ctx.arc(W / 2 - tw / 2 - 2, 26, 3, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#f6ecd8'; ctx.fillText(lbl, W / 2 - tw / 2 + 6, 30); }
   // wave
-  if (waveState.alive > 0) { ctx.textAlign = 'right'; ctx.font = '11px system-ui, sans-serif'; ctx.fillStyle = 'rgba(246,236,216,.6)'; ctx.fillText(waveState.alive + ' static', W - 14, H - 162); }
+  if (waveState.alive > 0) { ctx.textAlign = 'right'; ctx.font = '11px system-ui, sans-serif'; ctx.fillStyle = 'rgba(246,236,216,.6)'; ctx.fillText(waveState.alive + ' machine' + (waveState.alive === 1 ? '' : 's'), W - 14, H - 162); }
   if (false && waveState.banner > 0) { const a = Math.min(1, waveState.banner); ctx.textAlign = 'center'; ctx.font = 'bold 34px Georgia, serif'; ctx.fillStyle = rgba([242, 181, 68], a); ctx.fillText('WAVE ' + waveState.n, W / 2, H * 0.35); ctx.font = 'italic 13px Georgia, serif'; ctx.fillStyle = rgba([246, 236, 216], a); ctx.fillText(waveState.n === 1 ? 'The batch job is awake.' : waveList(waveState.n - 1).includes('beetle') ? 'Something big is in the racks.' : 'Static incoming.', W / 2, H * 0.35 + 22); }
   if (player.dead > 0) { ctx.fillStyle = 'rgba(16,26,46,.6)'; ctx.fillRect(0, 0, W, H); ctx.textAlign = 'center'; ctx.font = 'bold 30px Georgia, serif'; ctx.fillStyle = '#7fe0ff'; ctx.fillText('SIGNAL LOST', W / 2, H / 2 - 8); ctx.font = '13px system-ui, sans-serif'; ctx.fillStyle = '#b9c5d6'; ctx.fillText('Rebooting at the coffee machine…', W / 2, H / 2 + 18); }
   if (shop.open) {
@@ -1679,7 +1686,7 @@ function spawnGroup(x, list) {
 }
 function updateEncounters(dt) {
   if (!story.weaponsOnline) return;
-  for (const en of encounters) { if (en.done || Math.abs(player.x - en.x) > en.r) continue; en.done = true; spawnGroup(en.x, en.list); banner('Static!', 1.4); shake = Math.max(shake, 0.08); }
+  for (const en of encounters) { if (en.done || Math.abs(player.x - en.x) > en.r) continue; en.done = true; spawnGroup(en.x, en.list); banner('Machines!', 1.4); shake = Math.max(shake, 0.08); }
 }
 
 /* ---- independent crew AI ---- */
@@ -1898,7 +1905,7 @@ function loadWorld(id, spawnAt) {
   waveState.alive = 0; waveState.n = 0; waveState.toSpawn = 0; waveState.cd = 3; waveState.paused = true; waveState.rifts.length = 0; waveState.banner = 0;
   arena.active = false; arena.boss = null; stage.active = false; stage.door = null;
   npcs.length = 0; packages.length = 0; scanTargets.length = 0; encounters.length = 0; talk.open = false; shop.open = false; player.carry = null;
-  forklift.present = false; forklift.mounted = false; liftPallets.length = 0; catnip.active = 0; bossProjs.length = 0; valves.length = 0; hazard.windT = 0; containers.length = 0; animals.length = 0; finale.active = false; finale.everyone.length = 0; finale.phase = 0;
+  forklift.present = false; forklift.mounted = false; liftPallets.length = 0; catnip.active = 0; bossProjs.length = 0; valves.length = 0; hazard.windT = 0; containers.length = 0; animals.length = 0; finale.active = false; finale.everyone.length = 0; finale.phase = 0; wrecks.length = 0; bossIntro.t = 0;
   const sp = spawnAt || def.spawn;
   player.x = sp.x; player.y = sp.y; player.vx = 0; player.vy = 0; player.dead = 0; player.inv = 0.6;
   dog.x = sp.x - 60; dog.y = sp.y; dog.vx = 0; dog.vy = 0;
@@ -1937,7 +1944,7 @@ function setupEaston() {
     { text: 'Grab the package by the pallets and bring it to Rosa at bay 2', check: () => delivered, tip: 'Pick up and hand over with {use}. The dock has steps by bay 1.', target: () => player.carry ? { x: rosa.x, y: rosa.y, label: 'ROSA · BAY 2' } : { x: pkg.x, y: pkg.y, label: 'PACKAGE' } },
     { text: 'Scan the three tagged pallets on the dock', check: () => scans.every(s => s.done), tip: 'Stand by a tagged pallet and press {use} to scan', target: () => { const s = scans.find(q => !q.done); return s ? { x: s.x, y: s.y, label: s.sku } : null; }, onDone: () => { aplusSay('SCAN REJECTED. CUTOVER NOT AUTHORIZED.', 4.5); banner('Something is wrong in the server room.', 4); } },
     { text: 'Get to the server room (front door)', check: () => Math.abs(player.x - 990) < 50 && player.onGround, target: () => ({ x: 990, y: 440, label: 'SERVER ROOM' }), onDone: () => { story.weaponsOnline = true; serverFight = true; spawnGroup(990, ['flicker', 'flicker', 'flicker']); aplusSay('CUTOVER DENIED. ORDERS WILL SHIP. I WILL SHIP THEM.', 5); banner(weaponOf(hero).name + ' online', 3); shake = 0.3; } },
-    { text: 'Clear the Static', check: () => serverFight && waveState.alive <= 0, tip: 'Your weapon aims and fires by itself. You move, jump, and dash — dashing through Static is safe.', target: () => { const e = nearestEnemy(player.x, player.y - 30, 2000); return e ? { x: e.x, y: e.y, label: 'STATIC' } : null; }, onDone: () => { story.turnDone = true; aplusSay('I HAVE LOCKED THE OTHERS OUT. THEY WERE IN MY WAY.', 5); banner('A+ is fighting the cutover. Every DC is going dark. Get the team back.', 4.5); addEncounter(3050, ['flicker', 'flicker', 'flicker', 'jitter']); addEncounter(3750, ['packet', 'flicker', 'flicker']); } },
+    { text: 'Clear the machines', check: () => serverFight && waveState.alive <= 0, tip: 'Your weapon aims and fires by itself. You move, jump, and dash — dashing through machines is safe.', target: () => { const e = nearestEnemy(player.x, player.y - 30, 2000); return e ? { x: e.x, y: e.y, label: 'STATIC' } : null; }, onDone: () => { story.turnDone = true; aplusSay('I HAVE LOCKED THE OTHERS OUT. THEY WERE IN MY WAY.', 5); banner('A+ is fighting the cutover. Every DC is going dark. Get the team back.', 4.5); addEncounter(3050, ['flicker', 'flicker', 'flicker', 'jitter']); addEncounter(3750, ['packet', 'flicker', 'flicker']); } },
     { text: 'Find who\'s still on campus and form a crew', check: () => crew.length >= 1, tip: 'Walk up to a teammate and press {use}. Crews are three; {swap} to take point.', target: () => { let best = null, bd = 1e9; for (const n of npcs) if (n.hero) { const d = Math.abs(n.x - player.x); if (d < bd) { bd = d; best = n; } } return best ? { x: best.x, y: best.y, label: best.hero.name.toUpperCase() } : null; }, onDone: () => banner('Crews are three. Swap anyone in at a meet-up.', 3) },
     { text: 'Drive out from the truck when you\'re ready', check: () => false, tip: 'The coffee machine by the door refills your signal. Meet more teammates, or press {use} at the truck cab.', target: () => ({ x: WORLD.truckX + 450, y: 440, label: 'THE TRUCK' }) },
   ]);
@@ -1971,7 +1978,7 @@ function updateDoors(dt) {
   if (stage.active) { updateStage(dt); return; }
   if (restored[WORLD.id]) return;
   if (player.x > d.x - 30 && player.x < d.x + 10 && player.onGround) {
-    if (crew.length < d.minCrew) { player.x = d.x - 32; player.vx = -120; restoredBanner.t = 1.8; restoredBanner.text = 'Boss stage — bring a crew. Meet teammates in Easton.'; return; }
+    if (crew.length < d.minCrew) { player.x = d.x - 32; player.vx = -120; restoredBanner.t = 3; restoredBanner.text = 'Boss stage — bring a crew of three. Free the teammate here, or bring more from Easton.'; return; }
     startStage(d);
   }
 }
@@ -2073,7 +2080,7 @@ function updateDrive(dt) {
   for (let i = drive.obs.length - 1; i >= 0; i--) {
     const o = drive.obs[i]; o.t += dt; if (o.scatter > 0) { o.scatter += dt * 3; if (o.scatter > 2) { drive.obs.splice(i, 1); continue; } }
     const rel = o.x - drive.x; if (rel < -200) { drive.obs.splice(i, 1); continue; }
-    if (!o.hit && o.scatter === 0 && rel > 170 && rel < 300 && drive.hop === 0) { o.hit = true; drive.cargo = Math.max(0, drive.cargo - 14); drive.hits++; shake = Math.max(shake, 0.25); bucks.n = Math.max(0, bucks.n - 2); drive.msgs.push({ t: 0, s: o.k === 'flicker' ? 'Static on the road!' : o.k === 'pothole' ? 'Pothole. Cargo shifted.' : 'Crate on the shoulder.' }); }
+    if (!o.hit && o.scatter === 0 && rel > 170 && rel < 300 && drive.hop === 0) { o.hit = true; drive.cargo = Math.max(0, drive.cargo - 14); drive.hits++; shake = Math.max(shake, 0.25); bucks.n = Math.max(0, bucks.n - 2); drive.msgs.push({ t: 0, s: o.k === 'flicker' ? 'A+ scout on the road!' : o.k === 'pothole' ? 'Pothole. Cargo shifted.' : 'Crate on the shoulder.' }); }
   }
   for (let i = drive.msgs.length - 1; i >= 0; i--) { drive.msgs[i].t += dt; if (drive.msgs[i].t > 1.4) drive.msgs.splice(i, 1); }
   if (shake > 0) shake -= dt;
@@ -2111,12 +2118,10 @@ function renderDrive() {
   ctx.save(); ctx.translate(0, ty - 270);
   drawTrailer(ctx, 120, 270, ry);
   // spinning wheel hubs
-  ctx.strokeStyle = '#9aa0a8'; ctx.lineWidth = 2; for (const wx of [420, 465, 120 + 420 + 24, 120 + 420 + 66]) { for (let k = 0; k < 4; k++) { const a = drive.wheel + k * Math.PI / 2; ctx.beginPath(); ctx.moveTo(wx, ry - 20); ctx.lineTo(wx + Math.cos(a) * 14, ry - 20 + Math.sin(a) * 14); ctx.stroke(); } }
-  // pack in the trailer: heads at the back window; Biscuit in the cab
-  ctx.fillStyle = '#243447'; rr(ctx, 130, 292, 70, 36, 4); ctx.fill();
-  crew.forEach((f, i) => { ctx.save(); ctx.translate(146 + i * 22, 328 + (i % 2) * 2); ctx.scale(0.55, 0.55); drawHero(ctx, f.hero, 0, 0, 1, { t: gameTime + i, run: 0, moving: false }, null); ctx.restore(); });
-  ctx.save(); ctx.translate(560, 318); ctx.scale(0.8, 0.8); drawBiscuit(ctx, { x: 0, y: 0, facing: 1, moving: false, run: 0, t: gameTime, earA: -0.4 + Math.sin(gameTime * 8) * 0.2 }, null); ctx.restore();
-  ctx.save(); ctx.translate(582, 322); ctx.scale(0.7, 0.7); drawHero(ctx, hero, 0, 0, 1, { t: gameTime, run: 0, moving: false }, null); ctx.restore();
+  ctx.strokeStyle = '#9aa0a8'; ctx.lineWidth = 2; for (const wx of [120 + 72, 120 + 118, 120 + 420 + 24, 120 + 420 + 66]) { for (let k = 0; k < 4; k++) { const a = drive.wheel + k * Math.PI / 2; ctx.beginPath(); ctx.moveTo(wx, ry - 20); ctx.lineTo(wx + Math.cos(a) * 14, ry - 20 + Math.sin(a) * 14); ctx.stroke(); } }
+  // crew ride in the back with the door rolled up; hero drives, Biscuit rides shotgun (both clipped into the cab window)
+  { const dx = 120 + 4, dy = 270 + 8, dw = 54, dh = 76; ctx.fillStyle = '#141826'; ctx.fillRect(dx, dy, dw, dh); ctx.fillStyle = '#243447'; ctx.fillRect(dx, dy + dh - 12, dw, 12); ctx.save(); ctx.beginPath(); ctx.rect(dx, dy, dw, dh); ctx.clip(); crew.forEach((f, i) => { ctx.save(); ctx.translate(dx + 16 + i * 22, dy + dh - 4); ctx.scale(0.62, 0.62); drawHero(ctx, f.hero, 0, 0, i % 2 ? 1 : -1, { t: gameTime + i, run: 0, moving: false }, null); ctx.restore(); }); ctx.restore(); }
+  { const wx = 120 + 420 + 30, wy2 = 270 + 12, ww = 28, wh = 24; ctx.save(); ctx.beginPath(); rr(ctx, wx, wy2, ww, wh, 3); ctx.clip(); ctx.fillStyle = '#1c2a3a'; ctx.fillRect(wx, wy2, ww, wh); ctx.save(); ctx.translate(wx + 16, wy2 + 46); ctx.scale(0.6, 0.6); drawHero(ctx, hero, 0, 0, 1, { t: gameTime, run: 0, moving: false }, null); ctx.restore(); ctx.save(); ctx.translate(wx + 4, wy2 + 26); ctx.scale(0.55, 0.55); drawBiscuit(ctx, { x: 0, y: 0, facing: 1, moving: false, run: 0, t: gameTime, earA: -0.4 + Math.sin(gameTime * 8) * 0.2 }, null); ctx.restore(); ctx.restore(); }
   // headlights at night
   if (night > 0.2) { ctx.save(); ctx.globalCompositeOperation = 'screen'; const hg = ctx.createLinearGradient(600, 350, 900, 350); hg.addColorStop(0, rgba([255, 240, 200], night * 0.45)); hg.addColorStop(1, 'rgba(255,240,200,0)'); ctx.fillStyle = hg; ctx.beginPath(); ctx.moveTo(600, 342); ctx.lineTo(960, 300); ctx.lineTo(960, 396); ctx.lineTo(600, 356); ctx.closePath(); ctx.fill(); ctx.restore(); }
   if (drive.honk > 0) { ctx.fillStyle = rgba([255, 255, 255], drive.honk); ctx.font = 'bold 22px Georgia, serif'; ctx.textAlign = 'left'; ctx.fillText('HONK!', 610, 270 - Math.sin(drive.honk * 10) * 6); }
@@ -2365,7 +2370,7 @@ function drawForklift(c, night) {
   for (const p of liftPallets) { c.save(); c.translate(p.x, p.y); drawPallet(c, -30, -28); c.restore(); }
   c.textAlign = 'left';
 }
-function drawForkliftHUD() { if (forklift.mounted) { ctx.textAlign = 'center'; ctx.font = '11px system-ui, sans-serif'; ctx.fillStyle = 'rgba(16,26,46,.6)'; rr(ctx, W / 2 - 170, H - 100, 340, 22, 6); ctx.fill(); ctx.fillStyle = '#f6ecd8'; ctx.fillText('FORKLIFT  ·  jump: forks up/down  ·  dash: drop / horn  ·  E: hop off  ·  ram Static: ' + forklift.rams, W / 2, H - 85); ctx.textAlign = 'left'; } }
+function drawForkliftHUD() { if (forklift.mounted) { ctx.textAlign = 'center'; ctx.font = '11px system-ui, sans-serif'; ctx.fillStyle = 'rgba(16,26,46,.6)'; rr(ctx, W / 2 - 170, H - 100, 340, 22, 6); ctx.fill(); ctx.fillStyle = '#f6ecd8'; ctx.fillText('FORKLIFT  ·  jump: forks up/down  ·  dash: drop / horn  ·  E: hop off  ·  rammed: ' + forklift.rams, W / 2, H - 85); ctx.textAlign = 'left'; } }
 
 /* ---------- Spartanburg setup + stage ---------- */
 function setupSpartanburg() {
@@ -2381,7 +2386,7 @@ const STAGE_STEPS_BY_WORLD = {
   taunton: STAGE_STEPS,
   spartanburg: [
     { name: 'Storm delivery', time: 34 },
-    { name: 'Forklift: ram 5 Static', time: 45 },
+    { name: 'Forklift: ram 5 machines', time: 45 },
     { name: 'Boss', time: 0 },
   ],
 };
@@ -2392,7 +2397,7 @@ function beginStepWorld() {
   clearStageEnemies(); packages.length = 0; scanTargets.length = 0; stage.spawnT = 2; stage.timer = s.time; stage.stepT = 0;
   restoredBanner.t = 3; restoredBanner.text = (stage.step + 1) + ' / 3  ·  ' + s.name;
   const dot = npcs.find(n => n.look.name === 'Dot');
-  if (stage.step === 0) { stage.pkg = spawnPackage(d.x0 + 30, groundYAt(d.x0 + 30), 'ORCHARD'); stage.delivered = false; if (dot) { dot.x = d.x1 - 60; dot.y = groundYAt(dot.x); dot.acceptsPackage = () => { stage.delivered = true; say(dot, 'Dot: "Dry, mostly. Now grab the lift — there\'s Static in the yard and I want it gone."'); }; } forklift.present = false; }
+  if (stage.step === 0) { stage.pkg = spawnPackage(d.x0 + 30, groundYAt(d.x0 + 30), 'ORCHARD'); stage.delivered = false; if (dot) { dot.x = d.x1 - 60; dot.y = groundYAt(dot.x); dot.acceptsPackage = () => { stage.delivered = true; say(dot, 'Dot: "Dry, mostly. Now grab the lift — there\'s machines in the yard and I want it gone."'); }; } forklift.present = false; }
   if (stage.step === 1) { placeForklift(d.x0 + 120); forklift.rams = 0; liftPallets.length = 0; rebuildPalletSolids(); }
   if (stage.step === 2) { forklift.mounted = false; forklift.present = false; const b = spawnBoss(d.boss, d.x1 - 160, groundYAt(d.x1 - 160)); arena.boss = b; if (b) b.tx = clamp(player.x + 320, d.x0 + 60, d.x1 - 60); }
   return true;
@@ -2718,7 +2723,7 @@ WORLD_DEFS.sacramento = makeDC({
   id: 'sacramento', name: 'West Sacramento, CA', location: 'West Sacramento, California — Phillips DC', weather: 0, hour: 18.9, hours: 42, miles: 2780,
   far: farDelta, boss: 'crane', bossName: 'THE CRANE',
   art: { ground: ['#c8b878', '#b8a868', '#8a7a58', '#4a3e30'], grass: '#d8c878', office: ['#e8d8b8', '#b8a888'], wall: ['#e0e0d8', '#a8a8a0'], trim: '#7a7060', rock: '#a89868', sign: 'WEST SACRAMENTO, CA', road: 'W. SACRAMENTO  ·  I-80', before: (g, gy) => drawCranes(g, gy), after: () => {} },
-  npc: { name: 'Grace', role: 'Shelter Director' }, lines: ['Grace: "Six dogs, one van, no power in the kennel. Walk them to me — slowly — and keep the Static off them."'],
+  npc: { name: 'Grace', role: 'Shelter Director' }, lines: ['Grace: "Six dogs, one van, no power in the kennel. Walk them to me — slowly — and keep the machines off them."'],
   steps: [{ type: 'escort', name: 'Rescue run: walk the shelter dogs to Grace', time: 60, n: 4 }, { type: 'deliver', name: 'Humane org order', time: 30, label: 'SHELTER' }, { type: 'boss', name: 'Boss' }],
   hazard: 'none', encounter: ['flicker', 'ghost', 'ghost'],
 });
@@ -3150,21 +3155,23 @@ WORLD_DEFS.show.driveTo = 'easton'; WORLD_DEFS.show.driveLabel = 'BACK TO EASTON
 
 /* ---------- attract-mode demo: a tour of every feature ---------- */
 const demo = { active: false, idx: 0, t: 0, caption: '', script: [] };
-function demoCrew(names) { crew.length = 0; for (const n of names) { const q = npcs.find(z => z.hero && z.hero.name === n); if (q) joinCrew(q.hero); } for (const m of crewAll()) SKILL[m.hero.name] = 6; }
+function demoCrew(names) { crew.length = 0; for (const n of names) { const ch = ROSTER.find(r => r.name === n); if (!ch || ch === hero) continue; const q = npcs.find(z => z.hero === ch); if (q) npcs.splice(npcs.indexOf(q), 1); crew.push({ hero: ch, x: player.x - 30 - crew.length * 24, y: player.y, vx: 0, vy: 0, w: 22, h: 52, facing: 1, onGround: true, wall: 0, run: 0, t: rnd(0, 5), moving: false, wcd: rnd(0, 0.5), state: 'idle', wander: 0 }); story.met.add(n); } for (const m of crewAll()) SKILL[m.hero.name] = 6; }
 function demoBoss(type) { const d = WORLD.def.door; if (!d) return; stage.active = true; stage.door = d; stage.step = 2; stage.fails = 0; arena.active = true; arena.x0 = d.x0; arena.x1 = d.x1; arena.door = d; const b = spawnBoss(type, d.x1 - 160, groundYAt(d.x1 - 160)); arena.boss = b; if (b) b.tx = clamp(player.x + 320, d.x0 + 60, d.x1 - 60); player.x = d.x0 + 60; player.y = groundYAt(player.x); for (const f of crew) { f.x = player.x - 30; f.y = player.y; } }
 const DEMO_SCRIPT = [
   { world: 'prologue', x: 200, hour: 15.5, weather: 0, cap: '1938. A feed store on a county road, and one promise.', dur: 10, goals: [{ x: 360, y: 424, act: 'use' }, { x: () => WORLD.horse.x - 30, act: 'use', pause: 1.2 }, { x: 1000, act: 'use' }, { x: 2260, act: 'use' }] },
   { world: 'easton', x: 300, hour: 23.9, weather: 0, cap: 'Easton, PA. 11:52 PM. The new site goes live at midnight.', dur: 7, goals: [{ x: 990, pause: 1.5 }], setup: () => { story.weaponsOnline = false; } },
   { world: 'easton', x: 1380, hour: 23.92, weather: 0, cap: 'Carry the order to the dock. Scan the tagged pallets.', dur: 14, goals: [{ x: 1470, y: 412, act: 'use' }, { x: 2090, y: 392, act: 'use', pause: 1.2 }, { x: 1800, y: 392, act: 'use' }, { x: 2000, y: 392, act: 'use' }, { x: 2300, y: 392, act: 'use' }], setup: () => { story.weaponsOnline = false; spawnPackage(1470, 412, 'BAY 2'); addScan(1800, 392, 'SKU 11938'); addScan(2000, 392, 'SKU 20415'); addScan(2300, 392, 'SKU 37471'); const rosa = npcs.find(n => n.look && n.look.name === 'Rosa'); if (rosa) rosa.acceptsPackage = () => say(rosa, 'Rosa: "That\'s the one. Now scan the three tagged pallets."'); } },
-  { world: 'easton', x: 950, hour: 23.95, weather: 0, cap: 'The batch job wakes up. Your weapon comes online.', dur: 8, goals: [{ fight: 1 }], setup: () => { spawnGroup(990, ['flicker', 'flicker', 'flicker', 'jitter']); banner(weaponOf(hero).name + ' online', 3); } },
-  { world: 'easton', x: 200, hour: 23.96, weather: 0, cap: 'Meet your teammates at work. Crews are three.', dur: 9, goals: [{ x: () => { const q = npcs.find(z => z.hero); return q ? q.x - 36 : 250; }, act: 'use', pause: 2.6 }, { x: () => { const q = npcs.find(z => z.hero); return q ? q.x - 36 : 250; }, act: 'use', pause: 0.5 }, { x: 640, y: 368 }] },
-  { world: 'easton', x: 2600, hour: 23.97, weather: 0, cap: 'Twelve auto-fire weapons. Teammates fight on their own.', dur: 10, goals: [{ fight: 1 }, { x: 3300 }], setup: () => { demoCrew(['Brian W', 'John']); }, fight: ['flicker', 'jitter', 'packet', 'lag', 'firewall', 'ghost'] },
+  { world: 'easton', x: 950, hour: 23.95, weather: 0, cap: 'Every scan comes back rejected. A+, the forty-year-old system, refuses the cutover — and sends its machines.', dur: 9, goals: [{ fight: 1 }], aplus: 'CUTOVER DENIED. ORDERS WILL SHIP. I WILL SHIP THEM.', setup: () => { spawnGroup(990, ['flicker', 'flicker', 'flicker', 'jitter']); banner(weaponOf(hero).name + ' online', 3); } },
+  { world: 'easton', x: 950, hour: 23.96, weather: 0, cut: 'map', cap: 'A+ takes the network. Nine distribution centers go dark, one by one — and it locks your team out at each one.', dur: 9, aplus: 'I HAVE LOCKED THE OTHERS OUT. THEY WERE IN MY WAY.' },
+  { world: 'easton', x: 200, hour: 23.96, weather: 0, cap: 'Only Aaron is still on campus. Recruit him — crews are three, and you need three before any boss.', dur: 9, goals: [{ x: () => { const q = npcs.find(z => z.hero); return q ? q.x - 36 : 250; }, act: 'use', pause: 2.6 }, { x: () => { const q = npcs.find(z => z.hero); return q ? q.x - 36 : 250; }, act: 'use', pause: 0.5 }, { x: 640, y: 368 }] },
+  { world: 'easton', x: 2600, hour: 23.97, weather: 0, cap: 'A+ runs robot spies: scouts, runners, haulers, couriers, shield units, cloakers. Shoot them open.', dur: 10, aplus: 'MY SCOUTS SEE EVERYTHING. MY COURIERS CARRY MY ORDERS.', goals: [{ fight: 1 }, { x: 3300 }], setup: () => { demoCrew(['Brian W', 'John']); }, fight: ['flicker', 'jitter', 'packet', 'lag', 'firewall', 'ghost'] },
   { world: 'easton', x: WORLD_DEFS.easton.truckX + 450, hour: 23.98, weather: 0, cap: 'Drive the network in the Phillips truck. Hop potholes, honk at Static.', dur: 9, walk: 0, setup: () => { demoCrew(['Umesh', 'Dave']); startDrive('taunton'); } },
-  { world: 'taunton', x: 300, hour: 6.2, weather: 1, cap: 'Taunton, MA in the fog. Every DC is a boss stage: challenges, then the boss.', dur: 7, to: 1100, setup: () => demoCrew(['Umesh', 'Dave']) },
-  { world: 'taunton', x: 2500, hour: 6.4, weather: 1, cap: 'The Fog Server hides in the fog, tells, and lunges. Fail, and the stage restarts.', dur: 10, walk: 0, setup: () => { demoCrew(['Umesh', 'Dave']); demoBoss('fogserver'); } },
+  { world: 'taunton', x: 300, hour: 6.2, weather: 1, cap: 'Taunton, MA. A+ locked Bret out of the rack room. Clear the lockout, re-verify the frozen accounts, and he joins.', dur: 18, aplus: 'THIS BUILDING HAS SHIPPED 11,206 ORDERS THIS WEEK. UNDER ME.', setup: () => { demoCrew(['Aaron']); setupRescue(WORLD.def); }, goals: [{ x: () => lockout.terminal, act: 'use', pause: 1 }, { x: () => (lockout.scans[0] || { x: 500 }).x, act: 'use' }, { x: () => (lockout.scans[1] || { x: 920 }).x, act: 'use' }, { x: () => (lockout.scans[2] || { x: 1090 }).x, act: 'use' }, { x: () => lockout.npc ? lockout.npc.x - 36 : 760, act: 'use', pause: 2.8 }, { x: () => lockout.npc ? lockout.npc.x - 36 : 760, act: 'use', pause: 1 }] },
+  { world: 'taunton', x: 1500, hour: 6.3, weather: 1, cap: 'Every DC is a boss stage: challenges under a clock, then the machine A+ seized. Fail anything and the stage restarts.', dur: 7, to: 2200, setup: () => demoCrew(['Aaron', 'Bret']) },
+  { world: 'taunton', x: 2500, hour: 6.4, weather: 1, cap: 'The Fog Server: the receiving rack, hiding in the fog. It tells before it lunges — that is your window.', dur: 11, walk: 0, aplus: 'YOU CANNOT SCAN WHAT YOU CANNOT SEE.', setup: () => { demoCrew(['Aaron', 'Bret']); demoBoss('fogserver'); } },
   { world: 'spartanburg', x: 1480, hour: 15, weather: 2, cap: 'Spartanburg, SC. Milo the alley cat sells Meowijuana.', dur: 8, goals: [{ x: 1596, act: 'use', pause: 3 }, { x: 1596, act: 'use', pause: 0.5 }], setup: () => { demoCrew(['Ryan', 'Ashwini']); bucks.n = 60; } },
   { world: 'spartanburg', x: 800, hour: 15.2, weather: 2, cap: 'Throw a bag and every cat in the county comes running. Biscuit is not amused.', dur: 8, goals: [{ x: 820, act: 'nip', pause: 1 }, { fight: 1 }], setup: () => { demoCrew(['Ryan', 'Ashwini']); catnip.n = 1; spawnGroup(800, ['flicker', 'flicker', 'jitter', 'packet']); } },
-  { world: 'spartanburg', x: 2380, hour: 15.4, weather: 2, cap: 'Hop on the forklift. Jump lifts the forks. Ram the Static.', dur: 12, goals: [{ x: 2390, act: 'use', pause: 0.4 }], setup: () => { demoCrew(['Ryan', 'Ashwini']); placeForklift(2420); spawnGroup(2700, ['flicker', 'lag', 'packet', 'flicker']); } },
+  { world: 'spartanburg', x: 2380, hour: 15.4, weather: 2, cap: 'Hop on the forklift. Jump lifts the forks. Ram the machines.', dur: 12, goals: [{ x: 2390, act: 'use', pause: 0.4 }], setup: () => { demoCrew(['Ryan', 'Ashwini']); placeForklift(2420); spawnGroup(2700, ['flicker', 'lag', 'packet', 'flicker']); } },
   { world: 'spartanburg', x: 2700, hour: 15.6, weather: 2, cap: 'The Peach Pit: a stretch-wrap turntable that throws peaches and rolls.', dur: 9, walk: 0, setup: () => { demoCrew(['Ryan', 'Ashwini']); demoBoss('peachpit'); } },
   { world: 'plantcity', x: 600, hour: 19.6, weather: 0, cap: 'Plant City, FL. Valve puzzles, rising water, and the Drainpipe heads.', dur: 8, walk: 0, setup: () => { demoCrew(['Bret', 'Greg']); demoBoss('drainpipe'); } },
   { world: 'lansing', x: 600, hour: 8.5, weather: 3, cap: 'Lansing, MI. Ice underfoot and a runaway snowplow.', dur: 8, walk: 0, setup: () => { demoCrew(['Bret', 'Greg']); demoBoss('snowdrift'); } },
@@ -3173,8 +3180,8 @@ const DEMO_SCRIPT = [
   { world: 'sacramento', x: 2700, hour: 18.9, weather: 0, cap: 'West Sacramento, CA. Walk the shelter dogs to Grace. Then the Crane drops containers.', dur: 10, goals: [{ x: 3400, pause: 2 }], setup: () => { demoCrew(['Rianan', 'Umesh']); stage.active = true; arena.active = true; arena.x0 = 2680; arena.x1 = 3500; stage.door = WORLD.def.door; stage.step = 0; spawnAnimals(2740, 4); const g = npcs.find(n => !n.hero && !n.cat); if (g) { g.x = 3440; g.y = 440; } } },
   { world: 'aurora', x: 2700, hour: 5.4, weather: 3, cap: 'Aurora, CO. The brand-new DC. Hold the go-live gate for 55 seconds.', dur: 9, walk: 0, setup: () => { demoCrew(['Dave', 'Ashwini']); demoBoss('gate'); } },
   { world: 'merge', x: 2700, hour: 2.5, weather: 1, cap: 'The Merge: the Central Pet legacy DC. Only Umesh, Ashwini, Dave or Jose can hurt the Schema Golem.', dur: 9, walk: 0, setup: () => { demoCrew(['Umesh', 'Ashwini']); demoBoss('golem'); } },
-  { world: 'easton', x: 1720, hour: 23.99, weather: 0, cap: 'Easton, 11:59. The Cutover Key opens the home warehouse. Everyone joins.', dur: 12, walk: 0, setup: () => { demoCrew(['Brian S', 'Jose']); story.cutoverKey = true; WORLD_DEFS.easton.door = EASTON_DOOR; demoBoss('queen'); finale.active = true; finale.everyone.length = 0; for (const n of npcs.slice()) { if (!n.hero) continue; finale.everyone.push({ hero: n.hero, x: 1760 + finale.everyone.length * 40, y: 392, vx: 0, vy: 0, w: 22, h: 52, facing: 1, onGround: true, wall: 0, run: 0, t: rnd(0, 5), moving: false, wcd: rnd(0, 0.8), state: 'idle', wander: 0, extra: true }); npcs.splice(npcs.indexOf(n), 1); } } },
-  { world: 'easton', x: 1900, hour: 0.05, weather: 0, cap: 'GO LIVE — OK. Skills earned, Ledger pages found, and the Buying Show to celebrate.', dur: 10, walk: 0, y: 392, setup: () => { startEnding(); ledger.found.add(0); ledger.found.add(1); } },
+  { world: 'easton', x: 1720, hour: 23.99, weather: 0, cap: 'Easton, 11:59. The Cutover Key opens the home warehouse. Everyone you freed joins, and A+ shows its true form.', dur: 12, aplus: 'I HAVE RUN AT MIDNIGHT EVERY NIGHT SINCE 1985.', walk: 0, setup: () => { demoCrew(['Brian S', 'Jose']); story.cutoverKey = true; WORLD_DEFS.easton.door = EASTON_DOOR; demoBoss('queen'); finale.active = true; finale.everyone.length = 0; for (const n of npcs.slice()) { if (!n.hero) continue; finale.everyone.push({ hero: n.hero, x: 1760 + finale.everyone.length * 40, y: 392, vx: 0, vy: 0, w: 22, h: 52, facing: 1, onGround: true, wall: 0, run: 0, t: rnd(0, 5), moving: false, wcd: rnd(0, 0.8), state: 'idle', wander: 0, extra: true }); npcs.splice(npcs.indexOf(n), 1); } } },
+  { world: 'easton', x: 1900, hour: 0.05, weather: 0, cap: 'You do not destroy A+. You finish the cutover with it. GO LIVE — OK.', dur: 10, aplus: 'GO LIVE — OK.   A+ ARCHIVED.   THANK YOU FOR THE ORDERS.', walk: 0, y: 392, setup: () => { startEnding(); ledger.found.add(0); ledger.found.add(1); } },
   { world: 'show', x: 900, hour: 10, weather: 0, cap: 'HECKTOWN ROAD  ·  press any key or tap to play', dur: 10, to: 1700, setup: () => demoCrew(['Rianan', 'Greg']) },
 ];
 function startDemo() {
@@ -3191,6 +3198,7 @@ function demoNext() {
   story.turnDone = true; story.weaponsOnline = true;
   loadWorld(s.world, { x: s.x, y: s.y || 440 }); hour = s.hour; timeAuto = false; weather = s.weather; setObjectives([]); talk.open = false; restoredBanner.t = 0;
   if (s.setup) s.setup();
+  if (s.aplus) aplusSay(s.aplus, Math.max(4, s.dur - 1.5));
   if (s.fight) spawnGroup(s.x + 200, s.fight);
   pilotSet(s.goals ? s.goals.map(g => Object.assign({}, g)) : []);
   player.inv = 99; player.hp = 3;
@@ -3241,7 +3249,7 @@ function updateDemo(dt) {
     if (demo.t >= s.dur + 1) demoNext();
     return;
   }
-  if (talk.open) { if (pilot.waitT <= 0) { pilot.waitT = 2.2; } else if (pilot.waitT < 0.05) { talk.open = false; talk.justClosed = true; } }
+  if (talk.open) { if (pilot.waitT <= 0) { pilot.waitT = 2.2; } else if (pilot.waitT < 0.05) { if (talk.options) { const o = talk.options[0]; talk.open = false; talk.justClosed = true; if (o.fn) o.fn(); } else { talk.open = false; talk.justClosed = true; } } }
   else if (forklift.mounted) {
     const t = nearestEnemy(forklift.x, forklift.y - 20, 500);
     if (t) { const d = t.x - forklift.x; if (Math.abs(d) < 90 && Math.abs(forklift.vx) < 150) { pilot.back = 0.7; } if (pilot.back > 0) { pilot.back -= dt; keys[d > 0 ? 'ArrowLeft' : 'ArrowRight'] = 1; } else keys[d > 0 ? 'ArrowRight' : 'ArrowLeft'] = 1; if (Math.abs(d) < 60 && Math.random() < dt * 2) keys.ShiftLeft = 1; }
@@ -3271,8 +3279,10 @@ function updateDemo(dt) {
 }
 function drawDemoHUD() {
   if (!demo.active) return;
-  ctx.fillStyle = 'rgba(16,26,46,.7)'; rr(ctx, W / 2 - 400, 86, 800, 40, 10); ctx.fill();
-  ctx.textAlign = 'center'; ctx.font = 'italic 15px Georgia, serif'; ctx.fillStyle = '#f6ecd8'; ctx.fillText(demo.caption, W / 2, 112); ctx.textAlign = 'right';
+  const sc = DEMO_SCRIPT[demo.idx]; const cut = sc && sc.cut === 'map'; if (cut) { drawMapCutscene(demo.t); drawAplus(); }
+  const cy = cut ? H - 70 : 86;
+  ctx.fillStyle = 'rgba(16,26,46,.7)'; rr(ctx, W / 2 - 400, cy, 800, 40, 10); ctx.fill();
+  ctx.textAlign = 'center'; ctx.font = 'italic 15px Georgia, serif'; ctx.fillStyle = '#f6ecd8'; ctx.fillText(demo.caption, W / 2, cy + 26); ctx.textAlign = 'right';
   ctx.font = 'bold 11px system-ui, sans-serif'; ctx.fillStyle = 'rgba(242,181,68,.9)'; ctx.fillText('DEMO ' + (demo.idx + 1) + '/' + DEMO_SCRIPT.length + '  ·  any key to play', W - 22, 74); ctx.textAlign = 'left';
 }
 function demoExit() { if (!demo.active) return; demo.active = false; location.reload(); }
@@ -3415,6 +3425,183 @@ teammateTalk = function (n) {
   }
   _teammateTalk(n);
 };
+
+/* =====================================================================
+   A+'S MACHINES — robot spies, wreck deaths, boss presentation, demo cutscenes
+   ===================================================================== */
+const ROBOT_NAMES = { flicker: 'SCOUT', jitter: 'RUNNER', lag: 'HAULER', packet: 'COURIER', firewall: 'SHIELD UNIT', ghost: 'CLOAKER', beetle: 'CRAWLER' };
+const STEEL = '#3a3f4a', PLATE = '#6a7280', DARK = '#1c2028', LED = [120, 255, 140];
+function ledColor(e) { return e.hit > 0 ? '#fff' : rgb(LED); }
+function bolt(g, x, y) { g.fillStyle = '#9aa0a8'; g.beginPath(); g.arc(x, y, 1.4, 0, Math.PI * 2); g.fill(); }
+let decalFlip = 1;
+function aplusDecal(g, x, y, s) { g.save(); g.translate(x, y); g.scale(s * decalFlip, s); g.fillStyle = DARK; rr(g, -7, -4, 14, 8, 1.5); g.fill(); g.fillStyle = rgb(LED); g.font = 'bold 6px monospace'; g.textAlign = 'center'; g.fillText('A+', 0, 2.5); g.restore(); }
+
+// Override the enemy renderer with mechanical designs (behaviour untouched)
+drawEnemy = function (c, e) {
+  c.save(); c.translate(e.x, e.y);
+  if (e.d.ghost) c.globalAlpha = 0.08 + e.revealed * 0.9;
+  if (e.born > 0) { c.globalAlpha *= 1 - e.born / 0.4; c.scale(1, 1 - e.born); }
+  c.scale(e.facing, 1); decalFlip = e.facing;
+  const g = c, w = e.w, h = e.h, t = e.t, led = ledColor(e);
+  const hitFlash = e.hit > 0;
+  // contact shadow
+  g.fillStyle = 'rgba(0,0,0,.22)'; g.beginPath(); g.ellipse(0, 1, w / 2 + 2, 3.5, 0, 0, Math.PI * 2); g.fill();
+  const body = (fill) => { const gr = g.createLinearGradient(0, -h, 0, 0); gr.addColorStop(0, hitFlash ? '#fff' : lighten(fill, 0.22)); gr.addColorStop(1, hitFlash ? '#fff' : shade(fill, 0.7)); return gr; };
+  if (e.type === 'flicker') { // SCOUT: hovering lens drone
+    const hov = e.onGround ? 0 : 0; const rot = t * 40;
+    g.fillStyle = body(STEEL); g.beginPath(); g.ellipse(0, -h / 2, w / 2, h / 2 - 1, 0, 0, Math.PI * 2); g.fill(); g.strokeStyle = DARK; g.lineWidth = 1.5; g.stroke();
+    g.fillStyle = PLATE; g.fillRect(-w / 2 + 2, -h / 2 - 2, w - 4, 3); // seam plate
+    g.fillStyle = '#9aa0a8'; g.fillRect(-1, -h - 6, 2, 7); g.fillStyle = led; g.beginPath(); g.arc(0, -h - 7, 2, 0, Math.PI * 2); g.fill(); // antenna
+    g.fillStyle = DARK; g.beginPath(); g.arc(4, -h / 2, 5, 0, Math.PI * 2); g.fill(); g.fillStyle = led; g.beginPath(); g.arc(4.5, -h / 2, 2.8, 0, Math.PI * 2); g.fill(); g.fillStyle = '#fff'; g.fillRect(3.5, -h / 2 - 1.5, 1, 1); // lens
+    g.strokeStyle = '#9aa0a8'; g.lineWidth = 1.5; for (const s of [-1, 1]) { g.beginPath(); g.moveTo(s * 5, -2); g.lineTo(s * 8, 1); g.stroke(); } // landing skids
+    g.fillStyle = 'rgba(200,210,220,.5)'; g.save(); g.translate(0, -h - 1); g.scale(Math.abs(Math.cos(rot)) * 0.9 + 0.1, 1); g.fillRect(-9, -1, 18, 2); g.restore(); // rotor blur
+  }
+  else if (e.type === 'jitter') { // RUNNER: spindly biped
+    const legA = Math.sin(t * 18) * 0.7;
+    g.strokeStyle = PLATE; g.lineWidth = 2.5; for (const s of [-1, 1]) { g.beginPath(); g.moveTo(s * 3, -h * 0.35); g.lineTo(s * 3 + Math.sin(legA * s) * 7, -h * 0.15); g.lineTo(s * 3 + Math.sin(legA * s) * 10, 0); g.stroke(); }
+    g.fillStyle = body(STEEL); rr(g, -6, -h * 0.72, 12, h * 0.4, 3); g.fill(); g.strokeStyle = DARK; g.lineWidth = 1; g.stroke();
+    g.fillStyle = body('#4a5060'); rr(g, -7, -h, 14, h * 0.26, 3); g.fill(); g.stroke();
+    g.fillStyle = DARK; g.fillRect(-5, -h + 4, 10, 3); g.fillStyle = led; g.fillRect(-4, -h + 4.5, 8, 2); // visor
+    g.strokeStyle = PLATE; g.lineWidth = 2; g.beginPath(); g.moveTo(6, -h * 0.6); g.lineTo(12, -h * 0.5 + Math.sin(t * 18) * 4); g.stroke(); // arm
+    bolt(g, -4, -h * 0.55); bolt(g, 4, -h * 0.55);
+  }
+  else if (e.type === 'lag') { // HAULER: tracked unit that leaks oil
+    g.fillStyle = DARK; rr(g, -w / 2, -12, w, 12, 6); g.fill(); g.strokeStyle = '#9aa0a8'; g.lineWidth = 1; for (let x = -w / 2 + 4; x < w / 2; x += 6) { g.beginPath(); g.moveTo(x + (t * 30 % 6), -12); g.lineTo(x + (t * 30 % 6), 0); g.stroke(); } // tread
+    g.fillStyle = body('#4a4e58'); rr(g, -w / 2 + 4, -h, w - 8, h - 12, 5); g.fill(); g.strokeStyle = DARK; g.stroke();
+    g.fillStyle = PLATE; g.fillRect(-w / 2 + 6, -h + 4, w - 12, 4);
+    g.fillStyle = DARK; rr(g, 2, -h + 8, 12, 8, 2); g.fill(); g.fillStyle = led; g.fillRect(4, -h + 10, 8, 4); // sensor
+    g.fillStyle = '#c8c8d0'; g.fillRect(-w / 2 + 6, -h - 5, 6, 5); g.fillStyle = '#7fe0a0'; g.fillRect(-w / 2 + 7, -h - 4, 4, 3); // stack light
+    g.fillStyle = 'rgba(30,30,40,.6)'; g.beginPath(); g.ellipse(-w / 2 + 6, -2, 8, 2.5, 0, 0, Math.PI * 2); g.fill(); // oil
+    aplusDecal(g, -6, -h / 2 + 2, 1);
+  }
+  else if (e.type === 'packet') { // COURIER: box bot with a hatch
+    g.fillStyle = body('#5a6070'); rr(g, -w / 2, -h, w, h, 3); g.fill(); g.strokeStyle = DARK; g.lineWidth = 1.5; g.stroke();
+    g.strokeStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.moveTo(-w / 2, -h / 2); g.lineTo(w / 2, -h / 2); g.moveTo(0, -h); g.lineTo(0, 0); g.stroke();
+    g.fillStyle = DARK; rr(g, -w / 2 + 3, -h + 3, w - 6, 7, 2); g.fill(); g.fillStyle = led; g.fillRect(-w / 2 + 5, -h + 5, 4, 3); g.fillRect(-w / 2 + 11, -h + 5, 4, 3);
+    for (const [bx, by] of [[-w / 2 + 2, -2], [w / 2 - 2, -2], [-w / 2 + 2, -h + 2], [w / 2 - 2, -h + 2]]) bolt(g, bx, by);
+    g.fillStyle = PLATE; g.fillRect(-4, 0, 3, 3); g.fillRect(1, 0, 3, 3); // little wheels
+    aplusDecal(g, 0, -h / 4, 0.9);
+  }
+  else if (e.type === 'firewall') { // SHIELD UNIT: plated front
+    g.fillStyle = body(STEEL); rr(g, -w / 2 + 6, -h, w - 12, h, 4); g.fill(); g.strokeStyle = DARK; g.lineWidth = 1.5; g.stroke();
+    g.fillStyle = DARK; g.fillRect(-4, -h + 6, 10, 5); g.fillStyle = led; g.fillRect(-2, -h + 7, 6, 3);
+    g.strokeStyle = PLATE; g.lineWidth = 2.5; g.beginPath(); g.moveTo(-8, -h * 0.5); g.lineTo(-14, -h * 0.5 + Math.sin(t * 8) * 4); g.lineTo(-14, 0); g.stroke();
+    // riot plate on the front
+    const pg = g.createLinearGradient(w / 2 - 4, 0, w / 2 + 10, 0); pg.addColorStop(0, hitFlash ? '#fff' : '#8a94a0'); pg.addColorStop(1, hitFlash ? '#fff' : '#5a6270');
+    g.fillStyle = pg; rr(g, w / 2 - 4, -h - 4, 14, h + 8, 3); g.fill(); g.strokeStyle = DARK; g.stroke();
+    g.fillStyle = rgba(LED, 0.85); g.fillRect(w / 2 + 2, -h + 2, 2, h - 4); for (let yy = -h; yy < 0; yy += 9) bolt(g, w / 2 - 1, yy + 4);
+    aplusDecal(g, w / 2 + 3, -h / 2, 0.8);
+  }
+  else if (e.type === 'ghost') { // CLOAKER: shimmering outline
+    g.strokeStyle = rgba(LED, 0.5 + 0.4 * Math.sin(t * 9)); g.lineWidth = 1.5; g.setLineDash([3, 3]); rr(g, -w / 2, -h, w, h, 4); g.stroke(); g.setLineDash([]);
+    g.fillStyle = 'rgba(120,140,160,.25)'; rr(g, -w / 2, -h, w, h, 4); g.fill();
+    g.fillStyle = led; g.beginPath(); g.arc(4, -h + 8, 2.5, 0, Math.PI * 2); g.fill();
+    for (let k = 0; k < 3; k++) { const y = -h + ((t * 30 + k * 9) % h); g.fillStyle = rgba(LED, 0.25); g.fillRect(-w / 2, y, w, 1); }
+  }
+  else if (e.type === 'beetle') { // CRAWLER: armored six-legged bot
+    g.strokeStyle = PLATE; g.lineWidth = 3; for (let k = 0; k < 3; k++) { const la = Math.sin(t * 14 + k) * 5; g.beginPath(); g.moveTo(-w * 0.3 + k * w * 0.3, -6); g.lineTo(-w * 0.3 + k * w * 0.3 - 6 + la, 2); g.stroke(); }
+    g.fillStyle = body('#4a4e58'); g.beginPath(); g.ellipse(0, -h / 2, w / 2, h / 2, 0, 0, Math.PI * 2); g.fill(); g.strokeStyle = DARK; g.lineWidth = 2; g.stroke();
+    g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 2; g.beginPath(); g.moveTo(0, -h); g.lineTo(0, 0); g.moveTo(-w * 0.3, -h * 0.9); g.lineTo(-w * 0.3, -h * 0.1); g.moveTo(w * 0.3, -h * 0.9); g.lineTo(w * 0.3, -h * 0.1); g.stroke();
+    for (const [bx, by] of [[-w * 0.15, -h * 0.75], [w * 0.15, -h * 0.75], [-w * 0.15, -h * 0.25], [w * 0.15, -h * 0.25]]) bolt(g, bx, by);
+    g.fillStyle = body('#3a3f4a'); g.beginPath(); g.arc(w / 2 + 4, -h / 2, 9, 0, Math.PI * 2); g.fill(); g.strokeStyle = DARK; g.stroke();
+    g.strokeStyle = PLATE; g.lineWidth = 2.5; g.beginPath(); g.moveTo(w / 2 + 10, -h / 2 - 4); g.lineTo(w / 2 + 22, -h / 2 - 10); g.moveTo(w / 2 + 10, -h / 2 + 4); g.lineTo(w / 2 + 22, -h / 2 + 10); g.stroke(); // claw
+    g.fillStyle = e.charging > 0 ? '#fff' : led; g.fillRect(w / 2 + 6, -h / 2 - 3, 4, 4);
+    aplusDecal(g, 0, -h / 2, 1.1);
+  }
+  if (e.maxHp >= 14 && e.hp < e.maxHp) { g.scale(e.facing, 1); g.fillStyle = 'rgba(0,0,0,.5)'; g.fillRect(-16, -e.h - 12, 32, 4); g.fillStyle = rgb(LED); g.fillRect(-16, -e.h - 12, 32 * e.hp / e.maxHp, 4); }
+  c.restore();
+};
+
+/* ---- wrecks: shot machines split open, show their insides, then fly apart ---- */
+const wrecks = [];
+function addWreck(e) { wrecks.push({ x: e.x, y: e.y, w: e.w, h: e.h, type: e.type, t: 0, facing: e.facing, big: !!e.d.boss }); }
+function updateWrecks(dt) {
+  for (let i = wrecks.length - 1; i >= 0; i--) {
+    const k = wrecks[i]; k.t += dt;
+    if (k.t < 0.9 && Math.random() < dt * 20) spawn({ k: 'spark', x: k.x + rnd(-k.w / 3, k.w / 3), y: k.y - rnd(0, k.h), vx: rnd(-120, 120), vy: rnd(-160, 40), life: 0.3, t: 0, c: [255, 220, 120] });
+    if (k.t > 0.9 && !k.burst) { k.burst = true; const n = k.big ? 26 : 8; for (let j = 0; j < n; j++) spawn({ k: 'part', x: k.x + rnd(-k.w / 3, k.w / 3), y: k.y - rnd(0, k.h), vx: rnd(-260, 260), vy: rnd(-380, -80), life: rnd(0.9, 1.6), t: 0, kind: j % 4, rot: rnd(0, 6), vr: rnd(-8, 8) }); puff(k.x, k.y, k.big ? 24 : 6); if (k.big) shake = Math.max(shake, 0.45); }
+    if (k.t > 1.1) wrecks.splice(i, 1);
+  }
+}
+function drawInsides(g, w, h) {
+  // exposed chassis: frame, circuit board, gear, wires
+  g.fillStyle = '#23262e'; rr(g, -w / 2 + 3, -h + 3, w - 6, h - 6, 3); g.fill();
+  g.fillStyle = '#1f5a3a'; rr(g, -w / 2 + 6, -h * 0.7, w * 0.45, h * 0.35, 1); g.fill(); g.fillStyle = '#7fe0a0'; for (let k = 0; k < 4; k++) g.fillRect(-w / 2 + 8 + k * (w * 0.1), -h * 0.62, 2, 2);
+  g.strokeStyle = '#c8c8d0'; g.lineWidth = 1.2; g.beginPath(); g.arc(w * 0.2, -h * 0.5, Math.min(w, h) * 0.18, 0, Math.PI * 2); g.stroke(); for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2; g.beginPath(); g.moveTo(w * 0.2 + Math.cos(a) * Math.min(w, h) * 0.18, -h * 0.5 + Math.sin(a) * Math.min(w, h) * 0.18); g.lineTo(w * 0.2 + Math.cos(a) * Math.min(w, h) * 0.26, -h * 0.5 + Math.sin(a) * Math.min(w, h) * 0.26); g.stroke(); }
+  for (const [col, y] of [['#c0392b', -h * 0.3], ['#e9d27a', -h * 0.24], ['#3f8fd0', -h * 0.18]]) { g.strokeStyle = col; g.lineWidth = 1.5; g.beginPath(); g.moveTo(-w / 2 + 6, y); g.quadraticCurveTo(0, y + 6, w / 2 - 6, y - 4); g.stroke(); }
+}
+function drawWrecks() {
+  for (const k of wrecks) {
+    ctx.save(); ctx.translate(k.x, k.y); ctx.scale(k.facing, 1);
+    const open = clamp(k.t / 0.35, 0, 1); const w = k.w, h = k.h;
+    drawInsides(ctx, w, h);
+    // two shell halves swinging open
+    ctx.save(); ctx.translate(-w / 2, -h / 2); ctx.rotate(-open * 0.9); ctx.fillStyle = STEEL; rr(ctx, 0, -h / 2, w / 2, h, 4); ctx.fill(); ctx.strokeStyle = DARK; ctx.stroke(); ctx.restore();
+    ctx.save(); ctx.translate(w / 2, -h / 2); ctx.rotate(open * 0.9); ctx.fillStyle = STEEL; rr(ctx, -w / 2, -h / 2, w / 2, h, 4); ctx.fill(); ctx.strokeStyle = DARK; ctx.stroke(); ctx.restore();
+    ctx.fillStyle = rgba(LED, 0.9 * (1 - k.t)); ctx.fillRect(-3, -h / 2 - 3, 6, 6); // dying LED
+    ctx.restore();
+  }
+}
+function drawPartParticle(p) {
+  const a = 1 - p.t / p.life; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot + p.t * p.vr); ctx.globalAlpha = a;
+  if (p.kind === 0) { ctx.strokeStyle = '#c8c8d0'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.stroke(); for (let k = 0; k < 5; k++) { const an = k / 5 * Math.PI * 2; ctx.beginPath(); ctx.moveTo(Math.cos(an) * 4, Math.sin(an) * 4); ctx.lineTo(Math.cos(an) * 6, Math.sin(an) * 6); ctx.stroke(); } } // gear
+  else if (p.kind === 1) { ctx.strokeStyle = '#9aa0a8'; ctx.lineWidth = 1.5; ctx.beginPath(); for (let k = 0; k < 8; k++) ctx.lineTo(-6 + k * 1.7, (k % 2 ? -3 : 3)); ctx.stroke(); } // spring
+  else if (p.kind === 2) { ctx.fillStyle = '#1f5a3a'; ctx.fillRect(-5, -3, 10, 6); ctx.fillStyle = '#7fe0a0'; ctx.fillRect(-3, -1, 2, 2); ctx.fillRect(1, -1, 2, 2); } // board
+  else { ctx.fillStyle = STEEL; ctx.fillRect(-5, -4, 10, 8); ctx.fillStyle = '#9aa0a8'; ctx.fillRect(-3, -2, 2, 2); } // plate
+  ctx.restore();
+}
+const _killEnemy = killEnemy;
+killEnemy = function (e) { if (!e.d.cocoon) addWreck(e); _killEnemy(e); };
+
+/* ---- crew of three before any boss ---- */
+for (const id of Object.keys(WORLD_DEFS)) if (WORLD_DEFS[id].door) WORLD_DEFS[id].door.minCrew = 2;
+EASTON_DOOR.minCrew = 2;
+const _startStage4 = startStage;
+startStage = function (d) {
+  if (crew.length < 2) { player.x = d.x - 32; player.vx = -120; restoredBanner.t = 3; restoredBanner.text = 'Boss stage — bring a crew of three. Free the teammate here, or bring more from Easton.'; return; }
+  _startStage4(d);
+};
+const _updateDoors = updateDoors;
+updateDoors = function (dt) {
+  // the base door check bounces solo heroes with its own text; route everything through startStage's rule instead
+  _updateDoors(dt);
+};
+
+/* ---- boss presentation: intro card, telegraph, A+ badge, wreck death ---- */
+const bossIntro = { t: 0, name: '', sub: '' };
+const BOSS_SUBS = { fogserver: 'the receiving rack, running blind', peachpit: 'the stretch wrapper, on its own schedule', drainpipe: 'the aquatics drain, pressurized', snowdrift: 'the yard plow, unmanned', gale: 'the wind turbine, over-revved', hydra: 'three sort belts, one controller', crane: 'the port gantry, on remote', gate: 'the go-live gate, contested', golem: 'two schemas, one body', queen: 'the midnight batch job, made flesh' };
+const _spawnBoss = spawnBoss;
+spawnBoss = function (type, x, y) { const e = _spawnBoss(type, x, y); if (e && !demo.active) { bossIntro.t = 3.2; bossIntro.name = (WORLD.def.door && WORLD.def.door.name) || type.toUpperCase(); bossIntro.sub = 'A+ seized ' + (BOSS_SUBS[type] || 'this machine'); shake = Math.max(shake, 0.3); } return e; };
+function bossTelegraph(e) { const m = e.mode || e.phase; return ['tell', 'wind', 'charge', 'drop', 'spin'].includes(m) || (e.type === 'queen' && (m === 'charge' || (m === 'spit' && e.spat < 1))); }
+const _drawBoss = drawBoss;
+drawBoss = function (c, e) {
+  _drawBoss(c, e);
+  if (e.alpha !== undefined && e.alpha < 0.3) return;
+  c.save(); c.translate(e.x, e.y - e.h - 18); decalFlip = 1;
+  // A+ badge: it owns this machine
+  aplusDecal(c, 0, 0, 1.3);
+  if (bossTelegraph(e) && !e.dead) { const p = 0.6 + 0.4 * Math.sin(gameTime * 20); c.fillStyle = rgba([255, 90, 60], p); c.font = 'bold 22px Georgia, serif'; c.textAlign = 'center'; c.fillText('!', 0, -14); }
+  c.restore(); c.textAlign = 'left';
+};
+function drawBossIntro() {
+  if (bossIntro.t <= 0) return; bossIntro.t -= 1 / 60; const a = clamp(bossIntro.t > 2.6 ? (3.2 - bossIntro.t) / 0.6 : bossIntro.t < 0.6 ? bossIntro.t / 0.6 : 1, 0, 1);
+  ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = 'rgba(16,26,46,.55)'; ctx.fillRect(0, 300, W, 90);
+  ctx.fillStyle = 'rgba(255,90,60,.9)'; ctx.fillRect(0, 300, W, 3); ctx.fillRect(0, 387, W, 3);
+  ctx.textAlign = 'center'; ctx.font = 'bold 34px Georgia, serif'; ctx.fillStyle = '#f6ecd8'; ctx.fillText(bossIntro.name, W / 2, 344);
+  ctx.font = 'italic 14px Georgia, serif'; ctx.fillStyle = '#ff8a5a'; ctx.fillText(bossIntro.sub, W / 2, 372); ctx.restore(); ctx.textAlign = 'left';
+}
+
+/* ---- demo: story hints and cutscenes ---- */
+const cutscene = { map: null };
+function drawMapCutscene(t) {
+  ctx.fillStyle = 'rgba(6,14,8,.975)'; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(120,255,140,.25)'; ctx.lineWidth = 1; for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); } for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  ctx.font = 'bold 14px monospace'; ctx.fillStyle = '#7fe0a0'; ctx.textAlign = 'left'; ctx.fillText('PHILLIPS NETWORK  ·  WAR ROOM  ·  23:5' + Math.min(9, 2 + Math.floor(t)), 40, 60);
+  const pins = [['Easton', 820, 200], ['Taunton', 890, 150], ['Spartanburg', 780, 300], ['Plant City', 800, 400], ['Lansing', 660, 190], ['Billings', 330, 150], ['Portland', 120, 130], ['W. Sacramento', 110, 260], ['Aurora', 400, 260]];
+  ctx.strokeStyle = 'rgba(120,255,140,.35)'; ctx.lineWidth = 1.5; for (const [, x, y] of pins) { ctx.beginPath(); ctx.moveTo(820, 200); ctx.lineTo(x, y); ctx.stroke(); }
+  pins.forEach(([n, x, y], i) => { const red = t > 1.2 + i * 0.55; ctx.fillStyle = red ? '#ff5a5a' : '#7fe0a0'; ctx.beginPath(); ctx.arc(x, y, red ? 7 + Math.sin(t * 8) * 1.5 : 5, 0, Math.PI * 2); ctx.fill(); if (red) { ctx.strokeStyle = 'rgba(255,90,90,.5)'; ctx.beginPath(); ctx.arc(x, y, 14 + (t * 30 % 12), 0, Math.PI * 2); ctx.stroke(); } ctx.fillStyle = red ? '#ff8a8a' : '#c8f0d0'; ctx.font = '11px monospace'; ctx.textAlign = 'center'; ctx.fillText(n.toUpperCase() + (red ? '  OFFLINE' : ''), x, y + 22); });
+  ctx.textAlign = 'left';
+}
 bakeShared();
 player.hero = hero;
 loadWorld('easton');
