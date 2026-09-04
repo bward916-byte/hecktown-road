@@ -1,0 +1,20 @@
+{
+  "shell": "shell.html",
+  "modules": [
+    "01-boot-input-roster.js",
+    "02-world-render-easton.js",
+    "03-combat.js",
+    "04-crew-story.js",
+    "05-worlds-drive-stages.js",
+    "06-spartanburg-forklift-milo.js",
+    "07-act2.js",
+    "08-act3.js",
+    "09-finale.js",
+    "10-polish-audio-ledger-demo.js",
+    "11-aplus-rescues.js",
+    "12-machines-bosses-cutscenes.js",
+    "13-people-supers-1938.js",
+    "14-save-unlocks-photo-options.js",
+    "99-main.js"
+  ]
+}
