@@ -716,9 +716,10 @@ function drawTiled(img, par, y, tint, alpha, drift, tint2, rim) {
 function drawHUD(night) {
   ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   // name plate
-  ctx.font = 'bold 14px Georgia, serif'; ctx.fillStyle = 'rgba(16,26,46,.55)'; rr(ctx, 14, H - 44, 200, 30, 8); ctx.fill();
-  ctx.fillStyle = '#f2b544'; ctx.fillText(hero.name, 26, H - 24);
-  ctx.font = '11px system-ui, sans-serif'; ctx.fillStyle = '#b9c5d6'; ctx.fillText(hero.role + '  ·  ' + hero.perk, 26 + ctx.measureText(hero.name).width + 22, H - 24);
+  ctx.font = 'bold 14px Georgia, serif'; const nameW = ctx.measureText(hero.name).width; const roleTxt = hero.role + '  ·  ' + hero.perk; ctx.font = '11px system-ui, sans-serif'; const roleW = ctx.measureText(roleTxt).width;
+  ctx.fillStyle = 'rgba(16,26,46,.55)'; rr(ctx, 14, H - 44, Math.max(200, nameW + roleW + 46), 30, 8); ctx.fill();
+  ctx.font = 'bold 14px Georgia, serif'; ctx.fillStyle = '#f2b544'; ctx.fillText(hero.name, 26, H - 24);
+  ctx.font = '11px system-ui, sans-serif'; ctx.fillStyle = '#b9c5d6'; ctx.fillText(roleTxt, 26 + nameW + 14, H - 24);
   // time + weather chip
   const hh = Math.floor(hour), mm = Math.floor((hour % 1) * 60); const ap = hh >= 12 ? 'PM' : 'AM'; const h12 = ((hh + 11) % 12) + 1;
   const label = h12 + ':' + (mm < 10 ? '0' : '') + mm + ' ' + ap + '   ' + WEATHER[weather];
