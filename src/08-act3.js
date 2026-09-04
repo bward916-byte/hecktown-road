@@ -5,7 +5,7 @@ restored.sacramento = false; restored.aurora = false; restored.merge = false;
 story.cutoverKey = false;
 
 function farDelta() {
-  { const w = 1400, h = 300, c = mkCanvas(w, h), g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 214, w, h - 214); for (let i = 0; i < 4; i++) { const px = 300 + i * 260; g.fillRect(px, 120, 8, 94); g.fillRect(px - 60, 120, 150, 6); g.fillRect(px + 84, 126, 4, 40); g.fillRect(px - 40, 126, 4, 30); } LAYERS.ridge = c; }
+  { const w = 1400, h = 300, c = mkCanvas(w, h), g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 214, w, h - 214); for (let i = 0; i < 4; i++) { const px = 300 + i * 260; g.fillRect(px, 120, 8, 94); g.fillRect(px - 60, 120, 150, 6); g.fillRect(px + 84, 126, 4, 40); g.fillRect(px - 40, 126, 4, 30); } g.fillRect(1180, 130, 14, 84); g.fillRect(1250, 130, 14, 84); g.fillRect(1170, 160, 104, 6); g.fillRect(1178, 120, 18, 12); g.fillRect(1248, 120, 18, 12); LAYERS.ridge = c; }
   { const w = 1600, h = 300, c = mkCanvas(w, h), g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 250, w, h - 250); for (let x = 0; x < w; x += 8) if ((x * 31) % 9 < 3) g.fillRect(x, 244, 2, 6); g.fillRect(600, 232, 120, 18); g.fillRect(640, 216, 20, 16); LAYERS.hills = c; }
   { const w = 1200, h = 340, c = mkCanvas(w, h), g = c.getContext('2d'); for (let i = 0; i < 12; i++) { const tx = i * 100 + (i % 3) * 14, th = 100 + (i * 43) % 60; g.fillStyle = i % 2 ? '#6a6a3a' : '#5a5a30'; g.fillRect(tx - 3, h - th * 0.5, 6, th * 0.5); for (let k = 0; k < 3; k++) { g.beginPath(); g.ellipse(tx + Math.sin(i + k) * 12, h - th + k * th * 0.2, 34 - k * 4, 16, 0, 0, Math.PI * 2); g.fill(); } } LAYERS.trees = c; }
 }
