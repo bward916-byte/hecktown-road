@@ -284,8 +284,8 @@ function drawHero(c, ch, x, y, facing, pose, lit) {
   c.fillStyle = '#fff'; c.fillRect(4.6, hy - 1.8, 0.9, 0.9); c.fillRect(10.1, hy - 1.8, 0.9, 0.9);
   }
   c.strokeStyle = shade(ch.hair, 0.9); c.lineWidth = 1.2; c.beginPath(); c.moveTo(1.5, hy - 5); c.lineTo(6.5, hy - 6); c.moveTo(7.5, hy - 6); c.lineTo(12.5, hy - 5); c.stroke();
-  c.fillStyle = 'rgba(230,120,120,.18)'; c.beginPath(); c.arc(1.5, hy + 3, 2.2, 0, Math.PI * 2); c.fill();
-  c.strokeStyle = '#7a3b2a'; c.lineWidth = 1.2; c.beginPath(); c.arc(6.5, hy + 3, 3.5, 0.15, Math.PI - 0.15); c.stroke();
+  if (!ch.mono) { c.fillStyle = 'rgba(230,120,120,.18)'; c.beginPath(); c.arc(1.5, hy + 3, 2.2, 0, Math.PI * 2); c.fill(); }
+  c.strokeStyle = ch.mono ? '#4a4a4a' : '#7a3b2a'; c.lineWidth = 1.2; c.beginPath(); c.arc(6.5, hy + 3, 3.5, 0.15, Math.PI - 0.15); c.stroke();
   if (ch.acc === 'glasses') { c.strokeStyle = '#333'; c.lineWidth = 1.2; c.strokeRect(1, hy - 4, 6, 5); c.strokeRect(8, hy - 4, 6, 5); }
   if (ch.acc === 'headset') { c.strokeStyle = '#222'; c.lineWidth = 2; c.beginPath(); c.arc(0, hy - 2, 14, Math.PI * 1.1, Math.PI * 1.9); c.stroke(); c.fillStyle = '#222'; c.beginPath(); c.arc(12, hy + 1, 3, 0, Math.PI * 2); c.fill(); c.strokeStyle = '#222'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(13, hy + 3); c.lineTo(11, hy + 9); c.stroke(); }
   // rim light on lit side
@@ -306,7 +306,7 @@ function drawPortrait(c, ch, size) {
   const g = c.createLinearGradient(0, 0, 0, 96); g.addColorStop(0, '#2a3c5c'); g.addColorStop(1, '#16223a');
   c.fillStyle = g; rr(c, 0, 0, 96, 96, 10); c.fill();
   // warm key light blob behind head
-  const rg = c.createRadialGradient(48, 40, 4, 48, 40, 50); rg.addColorStop(0, 'rgba(242,181,68,.35)'); rg.addColorStop(1, 'rgba(242,181,68,0)');
+  const rg = c.createRadialGradient(48, 40, 4, 48, 40, 50); rg.addColorStop(0, ch.mono ? 'rgba(235,235,245,.35)' : 'rgba(242,181,68,.35)'); rg.addColorStop(1, 'rgba(242,181,68,0)');
   c.fillStyle = rg; c.fillRect(0, 0, 96, 96);
   c.save(); c.translate(48, 126); c.scale(1.7, 1.7);
   drawHero(c, ch, 0, 0, 1, { t: 0, run: 0, moving: false }, { i: 1, color: [242, 181, 68], side: 1 });
@@ -3207,7 +3207,7 @@ const DEMO_SCRIPT = [
   { world: 'merge', x: 2700, hour: 2.5, weather: 1, cap: 'The Merge: the Central Pet legacy DC. Only Umesh, Ash, Dave or Jose can hurt the Schema Golem.', dur: 9, walk: 0, setup: () => { demoCrew(['Umesh', 'Ash']); demoBoss('golem'); } },
   { world: 'easton', x: 1720, hour: 23.99, weather: 0, cap: 'Easton, 11:59. The Cutover Key opens the home warehouse. Everyone you freed joins, and A+ shows its true form.', dur: 12, aplus: 'I HAVE RUN AT MIDNIGHT EVERY NIGHT SINCE 1985.', walk: 0, setup: () => { demoCrew(['Brian S', 'Jose']); story.cutoverKey = true; WORLD_DEFS.easton.door = EASTON_DOOR; demoBoss('queen'); finale.active = true; finale.everyone.length = 0; for (const n of npcs.slice()) { if (!n.hero) continue; finale.everyone.push({ hero: n.hero, x: 1760 + finale.everyone.length * 40, y: 392, vx: 0, vy: 0, w: 22, h: 52, facing: 1, onGround: true, wall: 0, run: 0, t: rnd(0, 5), moving: false, wcd: rnd(0, 0.8), state: 'idle', wander: 0, extra: true }); npcs.splice(npcs.indexOf(n), 1); } } },
   { world: 'easton', x: 1900, hour: 0.05, weather: 0, cap: 'You do not destroy A+. You finish the cutover with it. GO LIVE — OK.', dur: 10, aplus: 'GO LIVE — OK.   A+ ARCHIVED.   THANK YOU FOR THE ORDERS.', walk: 0, y: 392, setup: () => { startEnding(); ledger.found.add(0); ledger.found.add(1); } },
-  { world: 'show', x: 900, hour: 10, weather: 0, cap: 'The Buying Show. Everyone you brought home. Milo has a permit.', dur: 9, to: 1700, setup: () => demoCrew(['Rianan', 'Greg']) },
+  { world: 'show', x: 900, hour: 10, weather: 0, cap: 'The Buying Show. Everyone you brought home. Milo has a permit. Greg Schreiner, number scientist, thirty-some years and counting, has never once appeared in color.', dur: 10, to: 1700, setup: () => demoCrew(['Rianan', 'Greg']) },
   { world: 'prologue', x: 560, hour: 16.5, weather: 0, cut: 'card', title: 'Show up for the people who count on you.', sub: 'HECKTOWN ROAD  ·  press any key or tap to play', cap: '', dur: 8, small: true },
 ];
 function startDemo() {
@@ -3654,14 +3654,15 @@ function drawMapCutscene(t) {
   const set = (n, o) => { const r = ROSTER.find(x => x.name === n); if (r) Object.assign(r, o); };
   set('Aaron', { role: 'Infrastructure Manager', face: 'short-beard' });
   set('Bret', { role: 'Hardware & Infrastructure' });
-  set('Greg', { role: 'Data Architect' });
+  set('Greg', { role: 'Number Scientist', mono: true, face: 'beard-goatee', skin: '#bdbdbd', hair: '#5c5c5c', shirt: '#7a7a7a', pants: '#3c3c3c', acc: 'cardigan', style: 'short' });
+  WEAPONS.Greg.color = [225, 225, 235]; WEAPONS.Greg.name = 'Dashboard Drones';
   set('Ash', { role: 'Salesforce Genius' });
 })();
 const FLAVOR = {
   Aaron: ['Aaron: "Racks are humming, switches are green. Where do you need me?"', 'Aaron: "I trimmed the beard for the launch. Nobody noticed. Good."'],
   Bret: ['Bret: "Baby boy finally sleeps through the night — I can give you the whole shift."', 'Bret: "Is Biscuit coming? Biscuit\'s coming. Good. Dogs first, hardware second."', 'Bret: "If it has a power supply, I can fix it. If it has firmware, I can fix it faster."'],
   Rianan: ['Rianan: "That alley cat has a business plan. I respect it. I also want to pet it."', 'Rianan: "Every cat in this county is now my responsibility. Fine."'],
-  Greg: ['Greg: "Three-dimensional data models. I can see the whole network from here. It\'s ugly. We\'ll fix it."', 'Greg: "Give me a fact table and a quiet room and I will kick data ass."'],
+  Greg: ['Greg Schreiner: "Number scientist. Thirty-some years on this floor. I was here before the green screens and I\'ll be here after. Some of us never clock out."', 'Greg: "Three-dimensional data models. I can see the whole network from here. It\'s ugly. We\'ll fix it."', 'Greg: "Give me a fact table and a quiet room and I will kick data ass."', 'Greg: "You\'re wondering about the color. Don\'t. I\'ve been here long enough that the building stopped rendering me."'],
   Ash: ['Ash: "Salesforce is talking to me again. It apologized. We\'re fine."', 'Ash: "Call me Ash. And yes, the flow will hold."'],
   Dave: ['Dave: "Forty years of green screens and this is the first one that talked back."'],
   Umesh: ['Umesh: "Every 850 in the queue is mine again. It can keep the 997s."'],
@@ -3674,6 +3675,7 @@ const FLAVOR = {
 const _teammateTalk2 = teammateTalk;
 teammateTalk = function (n) {
   const ch = n.hero;
+  if (ch.name === 'Greg' && !story.gregIntro) { story.gregIntro = true; say(n, FLAVOR.Greg[0], [{ label: 'Go on', fn: () => _teammateTalk2(n) }]); return; }
   if (!n.held && story.turnDone && FLAVOR[ch.name] && Math.random() < 0.5 && crew.length >= CREW_MAX - 1 && !crew.some(f => f.hero === ch)) { const L = FLAVOR[ch.name]; say(n, L[(Math.random() * L.length) | 0], [{ label: 'Swap in', fn: () => _teammateTalk2(n) }, { label: 'Later', fn: null }]); return; }
   _teammateTalk2(n);
 };
@@ -3681,12 +3683,14 @@ teammateTalk = function (n) {
 /* facial hair on drawHero: short beard + mustache */
 const _drawHero = drawHero;
 drawHero = function (c, ch, x, y, facing, pose, lit) {
-  _drawHero(c, ch, x, y, facing, pose, lit);
+  if (ch.mono) { c.save(); c.globalCompositeOperation = 'lighter'; const gg = c.createRadialGradient(x, y - 28, 6, x, y - 28, 46); gg.addColorStop(0, 'rgba(235,235,245,.16)'); gg.addColorStop(1, 'rgba(235,235,245,0)'); c.fillStyle = gg; c.fillRect(x - 50, y - 80, 100, 90); c.restore(); c.save(); c.globalAlpha *= 0.93; _drawHero(c, ch, x, y, facing, pose, lit ? { i: lit.i, color: [230, 230, 240], side: lit.side } : null); c.restore(); }
+  else _drawHero(c, ch, x, y, facing, pose, lit);
   if (!ch.face) return;
   const sq = pose.squash || 1, st = pose.stretch || 1, big = pose.big || 1;
   c.save(); c.translate(x, y); c.scale(facing * sq * big, st * big);
   const bob = pose.moving && !pose.air ? Math.abs(Math.sin((pose.run || 0) * Math.PI * 2)) * 2 : 0; c.translate(0, -bob);
   const legLen = 18, torsoY = -legLen - 22 + (pose.moving ? 0 : Math.sin((pose.t || 0) * 2) * 0.8), hy = torsoY - 12;
+  if (ch.face === 'beard-goatee') { c.fillStyle = shade(ch.hair, 1.1); c.beginPath(); c.moveTo(-11, hy + 1); c.quadraticCurveTo(-8, hy + 15, 0, hy + 17); c.quadraticCurveTo(10, hy + 15, 13, hy + 4); c.lineTo(13, hy + 1); c.quadraticCurveTo(8, hy + 8, 0, hy + 9); c.quadraticCurveTo(-7, hy + 8, -11, hy + 1); c.closePath(); c.fill(); c.fillStyle = shade(ch.hair, 0.8); c.beginPath(); c.moveTo(3, hy + 8); c.quadraticCurveTo(6, hy + 19, 9, hy + 8); c.closePath(); c.fill(); c.fillRect(2, hy + 1.5, 9, 2); }
   if (ch.face === 'short-beard') { c.fillStyle = shade(ch.hair, 1.05); c.beginPath(); c.moveTo(-6, hy + 2); c.quadraticCurveTo(0, hy + 13, 12, hy + 6); c.lineTo(12, hy + 2); c.quadraticCurveTo(4, hy + 9, -6, hy + 2); c.closePath(); c.fill(); c.fillRect(2, hy + 1.5, 9, 2); }
   c.restore();
 };
