@@ -416,11 +416,6 @@ function renderCombatFront(night) {
 }
 function drawCombatHUD() {
   ctx.textAlign = 'left';
-  // signal bars (hp)
-  const bx = 14, by = H - 78;
-  ctx.fillStyle = 'rgba(16,26,46,.55)'; rr(ctx, bx, by - 6, 120, 30, 8); ctx.fill();
-  for (let i = 0; i < player.maxHp; i++) { const hgt = 8 + i * 4; ctx.fillStyle = i < player.hp ? '#7fe0ff' : 'rgba(255,255,255,.15)'; ctx.fillRect(bx + 10 + i * 10, by + 16 - hgt, 7, hgt); }
-  ctx.font = 'bold 12px system-ui, sans-serif'; ctx.fillStyle = '#f2b544'; ctx.fillText('$' + bucks.n, bx + 10 + player.maxHp * 10 + 10, by + 15);
   // weapon chip
   const w = weaponOf(hero); if (w && story.weaponsOnline) { ctx.font = '11px system-ui, sans-serif'; const lbl = w.name; const tw = ctx.measureText(lbl).width; ctx.fillStyle = 'rgba(16,26,46,.55)'; rr(ctx, W / 2 - tw / 2 - 12, 14, tw + 24, 24, 8); ctx.fill(); ctx.fillStyle = rgb(w.color); ctx.beginPath(); ctx.arc(W / 2 - tw / 2 - 2, 26, 3, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#f6ecd8'; ctx.fillText(lbl, W / 2 - tw / 2 + 6, 30); }
   // wave
