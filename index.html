@@ -3179,7 +3179,7 @@ function demoBoss(type) { const d = WORLD.def.door; if (!d) return; stage.active
 const KID_BLAINE = { name: 'Blaine', role: 'a boy', skin: '#f1c9a5', hair: '#a8632c', style: 'cap', shirt: '#c25a3a', pants: '#2f6f9f', acc: 'none', kid: true };
 const DEMO_SCRIPT = [
   { world: 'easton', x: 700, hour: 18.6, weather: 0, cut: 'card', title: 'HECKTOWN ROAD', sub: 'a Phillips Pet adventure', cap: '', dur: 5, setup: () => { story.weaponsOnline = false; gregGhost.timer = 0; } },
-  { world: 'easton', x: 700, hour: 18.6, weather: 0, cut: 'card', title: 'A work of fiction', sub: 'Nothing here depicts actual events at Phillips Pet Food & Supplies or in its history. The people are real and beloved. The robots are not. Greg is a matter of some debate.', cap: '', dur: 7, small: true },
+  { world: 'easton', x: 700, hour: 18.6, weather: 0, cut: 'card', title: 'A work of fiction', sub: 'Nothing here depicts actual events at Phillips Pet Food & Supplies or in its history. The people are real and beloved. The robots are not. Greg is a matter of some debate.', cap: '', dur: 12, small: true },
   { world: 'prologue', x: 200, hour: 15.5, weather: 0, cut: 'card', title: '1938', sub: 'Germansville, Pennsylvania', cap: '', dur: 4 },
   { world: 'prologue', x: 200, hour: 15.5, weather: 0, cap: 'One feed store. Purina chows, a wagon, a mare, and a promise made on a rainy afternoon.', dur: 12, setup2: () => { gregGhost.timer = 5; }, goals: [{ x: 360, y: 424, act: 'use' }, { x: () => WORLD.horse.x - 30, act: 'use', pause: 1.2 }, { x: 1000, act: 'use' }, { x: 2260, act: 'use' }] },
   { world: 'prologue', x: 200, hour: 16.5, weather: 0, cut: 'card', title: 'SOME YEARS LATER', sub: 'the same yard', cap: '', dur: 4 },
