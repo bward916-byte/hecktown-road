@@ -881,6 +881,7 @@ function render() {
   // actors
   renderCombatBack(night);
   drawStoryLayer(night);
+  drawLockout();
   drawPrologueLayer();
   drawLedgerPages();
   drawValves();
@@ -961,6 +962,7 @@ function render() {
   drawForkliftHUD();
   drawLedgerHUD();
   drawAudioHUD();
+  drawAplus();
   drawEnding();
   drawDemoHUD();
   if (catnip.n > 0) { ctx.font = 'bold 11px system-ui, sans-serif'; ctx.fillStyle = 'rgba(16,26,46,.55)'; rr(ctx, 14, H - 110, 130, 24, 8); ctx.fill(); ctx.fillStyle = '#d8ff4a'; ctx.fillText('MEOWIJUANA ×' + catnip.n + '  ·  X', 24, H - 94); }
@@ -1364,7 +1366,7 @@ const SHOP_ITEMS = [
 ];
 function itemCost(it) { return it.base; }
 function updateShop(dt) {
-  shop.near = Math.abs(player.x - COFFEE.x) < 40 && Math.abs(player.y - COFFEE.y) < 30;
+  shop.near = Math.abs(player.x - COFFEE.x) < 40 && Math.abs(player.y - COFFEE.y) < 30 && !nearScan() && !(nearPackage() && !player.carry) && !(player.carry && nearNPC() && nearNPC().acceptsPackage);
   if (!shop.open) { if (shop.near && edge.use) { shop.open = true; shop.sel = 0; } return; }
   if (edge.jump || (edge.use && !shop.near)) { shop.open = false; return; }
   if (edge.weather) shop.sel = (shop.sel + 1) % SHOP_ITEMS.length; // Q cycles selection while open
@@ -1389,6 +1391,8 @@ function updateCombat(dt) {
   updatePackages(dt);
   updateEncounters(dt);
   updatePrologue(dt);
+  updateAplus(dt);
+  updateLockout(dt);
   if (shop.open || talk.open) return;
   rebuildHash();
   updateWaves(dt);
@@ -1893,7 +1897,7 @@ function loadWorld(id, spawnAt) {
   for (const e of enemies) e.dead = true; enemies.length = 0; projs.length = 0; beams.length = 0; summons.length = 0; shards.length = 0;
   waveState.alive = 0; waveState.n = 0; waveState.toSpawn = 0; waveState.cd = 3; waveState.paused = true; waveState.rifts.length = 0; waveState.banner = 0;
   arena.active = false; arena.boss = null; stage.active = false; stage.door = null;
-  npcs.length = 0; packages.length = 0; scanTargets.length = 0; encounters.length = 0; talk.open = false; player.carry = null;
+  npcs.length = 0; packages.length = 0; scanTargets.length = 0; encounters.length = 0; talk.open = false; shop.open = false; player.carry = null;
   forklift.present = false; forklift.mounted = false; liftPallets.length = 0; catnip.active = 0; bossProjs.length = 0; valves.length = 0; hazard.windT = 0; containers.length = 0; animals.length = 0; finale.active = false; finale.everyone.length = 0; finale.phase = 0;
   const sp = spawnAt || def.spawn;
   player.x = sp.x; player.y = sp.y; player.vx = 0; player.vy = 0; player.dead = 0; player.inv = 0.6;
@@ -1931,10 +1935,10 @@ function setupEaston() {
   setObjectives([
     { text: 'Clock in at the front door', check: () => Math.abs(player.x - 990) < 40 && player.onGround, moveHint: true, tip: 'Move: {move}   ·   Jump: {jump}   ·   Dash: {dash}', target: () => ({ x: 990, y: 440, label: 'FRONT DOOR' }), onDone: () => banner('11:52 PM  ·  the new site goes live at midnight', 3) },
     { text: 'Grab the package by the pallets and bring it to Rosa at bay 2', check: () => delivered, tip: 'Pick up and hand over with {use}. The dock has steps by bay 1.', target: () => player.carry ? { x: rosa.x, y: rosa.y, label: 'ROSA · BAY 2' } : { x: pkg.x, y: pkg.y, label: 'PACKAGE' } },
-    { text: 'Scan the three tagged pallets on the dock', check: () => scans.every(s => s.done), tip: 'Stand by a tagged pallet and press {use} to scan', target: () => { const s = scans.find(q => !q.done); return s ? { x: s.x, y: s.y, label: s.sku } : null; }, onDone: () => { banner('Every scan came back STATIC. Something is wrong in the server room.', 4); } },
-    { text: 'Get to the server room (front door)', check: () => Math.abs(player.x - 990) < 50 && player.onGround, target: () => ({ x: 990, y: 440, label: 'SERVER ROOM' }), onDone: () => { story.weaponsOnline = true; serverFight = true; spawnGroup(990, ['flicker', 'flicker', 'flicker']); banner(weaponOf(hero).name + ' online', 3); shake = 0.3; } },
-    { text: 'Clear the Static', check: () => serverFight && waveState.alive <= 0, tip: 'Your weapon aims and fires by itself. You move, jump, and dash — dashing through Static is safe.', target: () => { const e = nearestEnemy(player.x, player.y - 30, 2000); return e ? { x: e.x, y: e.y, label: 'STATIC' } : null; }, onDone: () => { story.turnDone = true; banner('The batch job woke up. Every DC is going dark. Get the team.', 4.5); addEncounter(3050, ['flicker', 'flicker', 'flicker', 'jitter']); addEncounter(3750, ['packet', 'flicker', 'flicker']); } },
-    { text: 'Talk to teammates and form a crew of three', check: () => crew.length >= 1, tip: 'Walk up to a teammate and press {use}. Crews are three; {swap} to take point.', target: () => { let best = null, bd = 1e9; for (const n of npcs) if (n.hero) { const d = Math.abs(n.x - player.x); if (d < bd) { bd = d; best = n; } } return best ? { x: best.x, y: best.y, label: best.hero.name.toUpperCase() } : null; }, onDone: () => banner('Crews are three. Swap anyone in at a meet-up.', 3) },
+    { text: 'Scan the three tagged pallets on the dock', check: () => scans.every(s => s.done), tip: 'Stand by a tagged pallet and press {use} to scan', target: () => { const s = scans.find(q => !q.done); return s ? { x: s.x, y: s.y, label: s.sku } : null; }, onDone: () => { aplusSay('SCAN REJECTED. CUTOVER NOT AUTHORIZED.', 4.5); banner('Something is wrong in the server room.', 4); } },
+    { text: 'Get to the server room (front door)', check: () => Math.abs(player.x - 990) < 50 && player.onGround, target: () => ({ x: 990, y: 440, label: 'SERVER ROOM' }), onDone: () => { story.weaponsOnline = true; serverFight = true; spawnGroup(990, ['flicker', 'flicker', 'flicker']); aplusSay('CUTOVER DENIED. ORDERS WILL SHIP. I WILL SHIP THEM.', 5); banner(weaponOf(hero).name + ' online', 3); shake = 0.3; } },
+    { text: 'Clear the Static', check: () => serverFight && waveState.alive <= 0, tip: 'Your weapon aims and fires by itself. You move, jump, and dash — dashing through Static is safe.', target: () => { const e = nearestEnemy(player.x, player.y - 30, 2000); return e ? { x: e.x, y: e.y, label: 'STATIC' } : null; }, onDone: () => { story.turnDone = true; aplusSay('I HAVE LOCKED THE OTHERS OUT. THEY WERE IN MY WAY.', 5); banner('A+ is fighting the cutover. Every DC is going dark. Get the team back.', 4.5); addEncounter(3050, ['flicker', 'flicker', 'flicker', 'jitter']); addEncounter(3750, ['packet', 'flicker', 'flicker']); } },
+    { text: 'Find who\'s still on campus and form a crew', check: () => crew.length >= 1, tip: 'Walk up to a teammate and press {use}. Crews are three; {swap} to take point.', target: () => { let best = null, bd = 1e9; for (const n of npcs) if (n.hero) { const d = Math.abs(n.x - player.x); if (d < bd) { bd = d; best = n; } } return best ? { x: best.x, y: best.y, label: best.hero.name.toUpperCase() } : null; }, onDone: () => banner('Crews are three. Swap anyone in at a meet-up.', 3) },
     { text: 'Drive out from the truck when you\'re ready', check: () => false, tip: 'The coffee machine by the door refills your signal. Meet more teammates, or press {use} at the truck cab.', target: () => ({ x: WORLD.truckX + 450, y: 440, label: 'THE TRUCK' }) },
   ]);
 }
@@ -2377,7 +2381,7 @@ const STAGE_STEPS_BY_WORLD = {
   taunton: STAGE_STEPS,
   spartanburg: [
     { name: 'Storm delivery', time: 34 },
-    { name: 'Forklift: ram 6 Static', time: 45 },
+    { name: 'Forklift: ram 5 Static', time: 45 },
     { name: 'Boss', time: 0 },
   ],
 };
@@ -2398,7 +2402,7 @@ function updateStageWorld(dt) {
   const s = stageSteps()[stage.step]; stage.stepT += dt;
   if (s.time) { stage.timer -= dt; if (stage.timer <= 0) { failStage('Out of time'); return true; } }
   if (stage.step === 0) { stage.spawnT -= dt; if (stage.spawnT <= 0) { stage.spawnT = 5; spawnGroup(player.x, ['flicker', 'flicker']); } if (stage.delivered) { stage.step = 1; grantSkill('challenge'); beginStep(); } }
-  else if (stage.step === 1) { stage.spawnT -= dt; if (stage.spawnT <= 0) { stage.spawnT = 1.9; spawnGroup(player.x, ['flicker', 'flicker', 'packet']); } if (forklift.rams >= 6) { stage.step = 2; grantSkill('challenge'); beginStep(); } }
+  else if (stage.step === 1) { stage.spawnT -= dt; if (stage.spawnT <= 0) { stage.spawnT = 1.9; spawnGroup(player.x, ['flicker', 'flicker', 'packet']); } if (forklift.rams >= 5) { stage.step = 2; grantSkill('challenge'); beginStep(); } }
   return true;
 }
 
@@ -2856,7 +2860,7 @@ const EASTON_DOOR = { x: 1640, x0: 1700, x1: 2440, boss: 'queen', name: 'BEETLE 
 function setupFinaleDoor() {
   if (!story.cutoverKey || restored.easton) return;
   WORLD_DEFS.easton.door = EASTON_DOOR; EASTON_DOOR.t = 0;
-  setObjectives([{ text: '11:59 PM  ·  the nest is in the home warehouse. Bring the Cutover Key to the dock door.', check: () => stage.active }, { text: 'Kill the Queen before the site goes live', check: () => restored.easton }]);
+  setObjectives([{ text: '11:59 PM  ·  A+ is in the home warehouse. Bring the Cutover Key to the dock door.', check: () => stage.active, target: () => ({ x: EASTON_DOOR.x, y: 440, label: 'DOCK DOOR' }), tip: 'Everyone on call joins the floor when you go in. Rianan too — ask her.' }, { text: 'Finish the cutover before midnight', check: () => restored.easton }]);
   hour = 23.92; timeAuto = false; weather = 0;
 }
 WORLD_DEFS.easton.steps = [{ type: 'deliver', name: 'One last order out the door', time: 40, label: 'GO LIVE' }, { type: 'scan', name: 'Verify the cutover', time: 30, n: 3 }, { type: 'boss', name: 'Boss' }];
@@ -2927,7 +2931,8 @@ function drawEnding() {
   const lines = [
     [0, 'GO LIVE — OK', 'bold 40px Georgia, serif', '#7fe0a0'],
     [2.5, '12:00 AM  ·  the new site is live', 'italic 16px Georgia, serif', '#f6ecd8'],
-    [5, 'Every DC is back on the network.', '14px system-ui, sans-serif', '#b9c5d6'],
+    [4, 'A+ ARCHIVED.  Forty years of midnights. Thank you for the orders.', '13px monospace', '#7fe0a0'],
+    [6, 'Every DC is back on the network.', '14px system-ui, sans-serif', '#b9c5d6'],
     [8, 'Easton · Taunton · Spartanburg · Plant City · Lansing · Billings · Portland · West Sacramento · Aurora', '12px system-ui, sans-serif', '#b9c5d6'],
     [11, 'Founded in 1938 as a single feed store,', '14px system-ui, sans-serif', '#f6ecd8'],
     [12.5, 'on one promise: show up for the people who count on you.', '14px system-ui, sans-serif', '#f6ecd8'],
@@ -3159,7 +3164,7 @@ const DEMO_SCRIPT = [
   { world: 'taunton', x: 2500, hour: 6.4, weather: 1, cap: 'The Fog Server hides in the fog, tells, and lunges. Fail, and the stage restarts.', dur: 10, walk: 0, setup: () => { demoCrew(['Umesh', 'Dave']); demoBoss('fogserver'); } },
   { world: 'spartanburg', x: 1480, hour: 15, weather: 2, cap: 'Spartanburg, SC. Milo the alley cat sells Meowijuana.', dur: 8, goals: [{ x: 1596, act: 'use', pause: 3 }, { x: 1596, act: 'use', pause: 0.5 }], setup: () => { demoCrew(['Ryan', 'Ashwini']); bucks.n = 60; } },
   { world: 'spartanburg', x: 800, hour: 15.2, weather: 2, cap: 'Throw a bag and every cat in the county comes running. Biscuit is not amused.', dur: 8, goals: [{ x: 820, act: 'nip', pause: 1 }, { fight: 1 }], setup: () => { demoCrew(['Ryan', 'Ashwini']); catnip.n = 1; spawnGroup(800, ['flicker', 'flicker', 'jitter', 'packet']); } },
-  { world: 'spartanburg', x: 2380, hour: 15.4, weather: 2, cap: 'Hop on the forklift. Jump lifts the forks. Ram the Static.', dur: 10, goals: [{ x: 2390, act: 'use', pause: 0.4 }], setup: () => { demoCrew(['Ryan', 'Ashwini']); placeForklift(2420); spawnGroup(2700, ['flicker', 'lag', 'packet', 'flicker']); } },
+  { world: 'spartanburg', x: 2380, hour: 15.4, weather: 2, cap: 'Hop on the forklift. Jump lifts the forks. Ram the Static.', dur: 12, goals: [{ x: 2390, act: 'use', pause: 0.4 }], setup: () => { demoCrew(['Ryan', 'Ashwini']); placeForklift(2420); spawnGroup(2700, ['flicker', 'lag', 'packet', 'flicker']); } },
   { world: 'spartanburg', x: 2700, hour: 15.6, weather: 2, cap: 'The Peach Pit: a stretch-wrap turntable that throws peaches and rolls.', dur: 9, walk: 0, setup: () => { demoCrew(['Ryan', 'Ashwini']); demoBoss('peachpit'); } },
   { world: 'plantcity', x: 600, hour: 19.6, weather: 0, cap: 'Plant City, FL. Valve puzzles, rising water, and the Drainpipe heads.', dur: 8, walk: 0, setup: () => { demoCrew(['Bret', 'Greg']); demoBoss('drainpipe'); } },
   { world: 'lansing', x: 600, hour: 8.5, weather: 3, cap: 'Lansing, MI. Ice underfoot and a runaway snowplow.', dur: 8, walk: 0, setup: () => { demoCrew(['Bret', 'Greg']); demoBoss('snowdrift'); } },
@@ -3239,7 +3244,7 @@ function updateDemo(dt) {
   if (talk.open) { if (pilot.waitT <= 0) { pilot.waitT = 2.2; } else if (pilot.waitT < 0.05) { talk.open = false; talk.justClosed = true; } }
   else if (forklift.mounted) {
     const t = nearestEnemy(forklift.x, forklift.y - 20, 500);
-    if (t) { keys[t.x > forklift.x ? 'ArrowRight' : 'ArrowLeft'] = 1; if (Math.abs(t.x - forklift.x) < 60 && Math.random() < dt * 2) keys.ShiftLeft = 1; }
+    if (t) { const d = t.x - forklift.x; if (Math.abs(d) < 90 && Math.abs(forklift.vx) < 150) { pilot.back = 0.7; } if (pilot.back > 0) { pilot.back -= dt; keys[d > 0 ? 'ArrowLeft' : 'ArrowRight'] = 1; } else keys[d > 0 ? 'ArrowRight' : 'ArrowLeft'] = 1; if (Math.abs(d) < 60 && Math.random() < dt * 2) keys.ShiftLeft = 1; }
     else { keys[Math.sin(demo.t * 0.6) > 0 ? 'ArrowRight' : 'ArrowLeft'] = 1; }
   } else {
     const g = pilotGoal();
@@ -3273,6 +3278,143 @@ function drawDemoHUD() {
 function demoExit() { if (!demo.active) return; demo.active = false; location.reload(); }
 window.addEventListener('keydown', e => { if (demo.active && !['KeyM'].includes(e.code)) demoExit(); });
 canvas.addEventListener('touchstart', () => demoExit(), { passive: true });
+
+/* =====================================================================
+   STORY PASS — A+ (the old system) is the antagonist; the team is found one DC at a time
+   ===================================================================== */
+
+/* ---------- A+ speaks: green-screen terminal cards ---------- */
+const aplus = { queue: [], cur: null, t: 0, typed: 0 };
+function aplusSay(text, dur) { aplus.queue.push({ text, dur: dur || 4.5 }); }
+function updateAplus(dt) {
+  if (!aplus.cur && aplus.queue.length) { aplus.cur = aplus.queue.shift(); aplus.t = 0; aplus.typed = 0; sfx('ui'); }
+  if (!aplus.cur) return;
+  aplus.t += dt; aplus.typed = Math.min(aplus.cur.text.length, Math.floor(aplus.t * 28));
+  if (aplus.t > aplus.cur.dur) aplus.cur = null;
+}
+function drawAplus() {
+  if (!aplus.cur || demo.active && false) return;
+  const c = aplus.cur; const a = c.t > c.dur - 0.5 ? clamp((c.dur - aplus.t) / 0.5, 0, 1) : clamp(aplus.t / 0.2, 0, 1);
+  ctx.save(); ctx.globalAlpha = a; ctx.font = 'bold 13px monospace'; const full = 'A+ > ' + c.text; const tw = Math.max(260, ctx.measureText(full).width + 32);
+  const x = W / 2 - tw / 2, y = 92, h = 34;
+  ctx.fillStyle = 'rgba(6,14,8,.92)'; rr(ctx, x, y, tw, h, 4); ctx.fill(); ctx.strokeStyle = 'rgba(120,255,140,.55)'; ctx.lineWidth = 1; rr(ctx, x, y, tw, h, 4); ctx.stroke();
+  for (let k = y + 4; k < y + h; k += 3) { ctx.fillStyle = 'rgba(120,255,140,.05)'; ctx.fillRect(x + 2, k, tw - 4, 1); }
+  ctx.fillStyle = '#7fe0a0'; ctx.textAlign = 'left'; ctx.fillText('A+ > ' + c.text.slice(0, aplus.typed) + (Math.floor(aplus.t * 3) % 2 && aplus.typed < c.text.length ? '▮' : ''), x + 14, y + 22);
+  ctx.restore(); ctx.textAlign = 'left';
+}
+const APLUS_LINES = {
+  arrive: { taunton: 'THIS BUILDING HAS SHIPPED 11,206 ORDERS THIS WEEK. UNDER ME.', spartanburg: 'I SEE YOU BROUGHT HELP. I HAVE THE FORKLIFT.', plantcity: 'THE AQUATICS ORDERS ARE ON TIME. THEY ARE ALWAYS ON TIME.', lansing: 'IT IS SNOWING. I HAVE ROUTED AROUND SNOW FOR FORTY YEARS.', billings: 'THE COLD CHAIN IS MINE. DO NOT TOUCH THE COLD CHAIN.', portland: 'EVERY TAG IS WHERE I PUT IT.', sacramento: 'YOU CANNOT MIGRATE A CRANE.', aurora: 'A NEW BUILDING. NO HISTORY. I WILL GIVE IT HISTORY.', merge: 'TWO SCHEMAS. ONE OF THEM IS ME. GUESS WHICH ONE STAYS.' },
+  rescue: { default: 'THAT ONE IS MINE. THE LOCKOUT HOLDS.', freed: 'ACCOUNT RESTORED. NOTED.' },
+  stage: 'CUTOVER DENIED. ORDERS WILL SHIP. I WILL SHIP THEM.',
+  restored: ['I HAVE EIGHT MORE.', 'I HAVE SEVEN MORE.', 'SIX. I AM NOT COUNTING.', 'YOU ARE SLOWER THAN A BATCH JOB.', 'FOUR. THE TRUCKS STILL ROLL FOR ME.', 'THREE. I REMEMBER THE FIRST TRUCK.', 'TWO. WHO WILL SHIP THE ORDERS.', 'ONE. I HAVE A KEY TOO.', 'THE KEY. OF COURSE IT WAS THE KEY.'],
+  queen: ['I HAVE RUN AT MIDNIGHT EVERY NIGHT SINCE 1985.', 'THE RACKS ARE MINE. I NUMBERED THEM.', 'IF I STOP, WHO SHOWS UP.'],
+  end: 'GO LIVE — OK.   A+ ARCHIVED.   THANK YOU FOR THE ORDERS.',
+};
+
+/* ---------- who is found where ---------- */
+const RESCUE_ORDER = ['Aaron', 'Bret', 'Dave', 'Umesh', 'John', 'Ryan', 'Greg', 'Brian S', 'Ashwini', 'Jose', 'Brian W'];
+const DC_ORDER = ['taunton', 'spartanburg', 'plantcity', 'lansing', 'billings', 'portland', 'sacramento', 'aurora', 'merge'];
+function rescuePlan() {
+  const list = RESCUE_ORDER.filter(n => n !== hero.name); const plan = { easton: [list[0]] };
+  DC_ORDER.forEach((id, i) => { plan[id] = list[i + 1]; });
+  if (list.length > DC_ORDER.length + 1) plan.easton.push(list[DC_ORDER.length + 1]);
+  return plan;
+}
+function heroByName(n) { return ROSTER.find(r => r.name === n); }
+
+/* ---------- lockout rescues ---------- */
+const lockout = { active: false, hero: null, x: 0, npc: null, barrier: true, terminal: 0, scans: [], t: 0, started: false };
+function setupRescue(def) {
+  lockout.active = false; lockout.npc = null; lockout.scans.length = 0; lockout.started = false;
+  const plan = rescuePlan(); const name = plan[WORLD.id]; if (!name) return;
+  if (story.met.has(name) || crew.some(f => f.hero.name === name) || hero.name === name) return;
+  const ch = heroByName(name); const x = def.rescueX || 760;
+  lockout.active = true; lockout.hero = ch; lockout.x = x; lockout.barrier = true; lockout.t = 0;
+  lockout.npc = addNPC({ hero: ch, look: ch, x, y: groundYAt(x), facing: -1, held: true, onTalk: (n) => { if (lockout.barrier) say(n, ch.name + ': "It locked me out of ' + ({ Aaron: 'the switch stack', Bret: 'the rack room', Dave: 'my green screen — it\'s looping', Umesh: 'EDI. Every 850 bounced', John: 'the job scheduler', Ryan: 'the deploy pipeline', Greg: 'every dashboard I own', 'Brian S': 'the admin console', Ashwini: 'Salesforce. It spoofed my login', Jose: 'the architecture repo', 'Brian W': 'the database' }[ch.name] || 'everything') + '. The terminal by the door — that\'s the lockout. Clear it."'); else teammateTalk(n); } });
+  lockout.terminal = x - 110;
+}
+function updateLockout(dt) {
+  if (!lockout.active) return; lockout.t += dt;
+  const nearT = Math.abs(player.x - lockout.terminal) < 40 && player.onGround && lockout.barrier;
+  WORLD.nearTerminal = nearT;
+  if (nearT && edge.use && !lockout.started && !talk.open) {
+    lockout.started = true; aplusSay(APLUS_LINES.rescue.default, 4);
+    const xs = [lockout.x - 260, lockout.x + 160, lockout.x + 330]; const skus = ['ACCT 0451', 'ACCT 1138', 'ACCT 2001'];
+    xs.forEach((sx, i) => lockout.scans.push(addScan(sx, groundYAt(sx), skus[i])));
+    spawnGroup(lockout.x, ['flicker', 'flicker', 'jitter']); banner('Lockout: re-verify the three accounts it froze', 3.5);
+  }
+  if (lockout.started && lockout.barrier && lockout.scans.length && lockout.scans.every(s => s.done)) {
+    lockout.barrier = false; aplusSay(APLUS_LINES.rescue.freed, 3.5); sfx('join');
+    banner(lockout.hero.name + ' is free  ·  talk to them', 3.5);
+    for (let k = 0; k < 24; k++) spawn({ k: 'glitch', x: lockout.x + rnd(-40, 40), y: groundYAt(lockout.x) - rnd(0, 70), vx: rnd(-120, 120), vy: rnd(-160, 40), life: 0.6, t: 0, c: [120, 255, 140] });
+    for (const s of lockout.scans) { const i = scanTargets.indexOf(s); if (i >= 0) scanTargets.splice(i, 1); }
+  }
+}
+function drawLockout() {
+  if (!lockout.active) return;
+  const x = lockout.x, gy = groundYAt(x), tx = lockout.terminal;
+  // terminal
+  ctx.save(); ctx.translate(tx, groundYAt(tx)); ctx.fillStyle = '#2b2f3a'; rr(ctx, -14, -60, 28, 60, 4); ctx.fill(); ctx.fillStyle = '#0a1a0e'; rr(ctx, -11, -56, 22, 18, 2); ctx.fill(); ctx.fillStyle = '#7fe0a0'; ctx.font = 'bold 7px monospace'; ctx.textAlign = 'center'; ctx.fillText(lockout.barrier ? 'LOCK' : 'OK', 0, -44); ctx.fillStyle = lockout.barrier ? '#ff5a5a' : '#7fe0a0'; ctx.fillRect(-4, -30, 8, 4);
+  if (WORLD.nearTerminal) { ctx.fillStyle = 'rgba(16,26,46,.7)'; rr(ctx, -46, -84, 92, 18, 5); ctx.fill(); ctx.fillStyle = '#f2b544'; ctx.font = 'bold 10px system-ui, sans-serif'; ctx.fillText('E  ·  CLEAR LOCKOUT', 0, -71); }
+  ctx.restore();
+  // barrier around the teammate
+  if (lockout.barrier) { ctx.save(); ctx.translate(x, gy); ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = rgba([120, 255, 140], 0.55 + 0.2 * Math.sin(lockout.t * 6)); ctx.lineWidth = 2; ctx.strokeRect(-34, -78, 68, 78); for (let k = 0; k < 6; k++) { const y = -78 + ((lockout.t * 40 + k * 13) % 78); ctx.fillStyle = rgba([120, 255, 140], 0.25); ctx.fillRect(-34, y, 68, 1.5); } ctx.font = 'bold 8px monospace'; ctx.fillStyle = '#7fe0a0'; ctx.textAlign = 'center'; ctx.fillText('ACCESS DENIED', 0, -84); ctx.restore(); }
+  ctx.textAlign = 'left';
+}
+
+/* ---------- hooks into world setup ---------- */
+const _placeTeammates = placeTeammates;
+placeTeammates = function () {
+  // Easton: only your first crewmate at the start; rescued teammates return here on call
+  const plan = rescuePlan(); const spots = [[1330, null, -1], [700, null, 1], [250, null, -1], [3080, null, -1], [3400, null, 1], [1900, 392, -1], [2200, 392, 1], [2650, 288, -1], [3720, 380, -1], [3830, 350, -1], [4080, null, -1], [1000, 340, 1]];
+  const here = plan.easton.slice(); for (const n of story.met) if (!here.includes(n)) here.push(n);
+  let i = 0;
+  for (const n of here) { const ch = heroByName(n); if (!ch || ch === hero || crew.some(f => f.hero === ch)) continue; const [x, yy, fc] = spots[i % spots.length]; i++; addNPC({ hero: ch, look: ch, x, y: yy === null ? groundYAt(x) : yy, facing: fc, onTalk: teammateTalk }); }
+  // Rianan holds the war room until the finale
+  if (hero.name !== 'Rianan' && !crew.some(f => f.hero.name === 'Rianan') && !story.met.has('Rianan')) addNPC({ hero: heroByName('Rianan'), look: heroByName('Rianan'), x: 1060, y: 440, facing: -1, onTalk: (n) => { if (story.cutoverKey) { say(n, 'Rianan: "The war room can run itself for ten minutes. Let\'s finish this."', [{ label: 'Join us', fn: () => { story.met.add('Rianan'); joinCrew(heroByName('Rianan')); } }, { label: 'Hold the room', fn: null }]); } else say(n, 'Rianan: "Someone has to hold the war room. Bring the team home — I\'ll be here when it\'s time."'); } });
+};
+const _joinCrew = joinCrew;
+joinCrew = function (ch) { const ok = _joinCrew(ch); if (ok) story.met.add(ch.name); return ok; };
+const _leaveCrew = leaveCrew;
+leaveCrew = function (i) { const f = crew[i]; if (!f) return; if (WORLD.id !== 'easton') { crew.splice(i, 1); story.met.add(f.hero.name); banner(f.hero.name + ' heads back to Easton', 2); return; } _leaveCrew(i); };
+
+/* ---------- world arrival / stage / restored lines ---------- */
+const _loadWorld = loadWorld;
+loadWorld = function (id, spawnAt) {
+  _loadWorld(id, spawnAt);
+  lockout.active = false; lockout.npc = null; aplus.queue.length = 0; aplus.cur = null;
+  if (demo.active) return;
+  const def = WORLD_DEFS[id];
+  if (id !== 'easton' && id !== 'prologue' && id !== 'show') setupRescue(def);
+  if (APLUS_LINES.arrive[id] && !restored[id]) aplusSay(APLUS_LINES.arrive[id], 5);
+  // Milo only shows up in a few alleys
+  if (!['spartanburg', 'billings', 'merge', 'show'].includes(id)) { for (let i = npcs.length - 1; i >= 0; i--) if (npcs[i].cat) npcs.splice(i, 1); }
+  // objective: free the teammate first
+  if (lockout.active) { const rest = quest.list.slice(); setObjectives([{ text: 'A+ locked ' + lockout.hero.name + ' out. Clear the lockout at the terminal by the office', check: () => !lockout.barrier, target: () => ({ x: lockout.barrier && lockout.started ? (lockout.scans.find(s => !s.done) || { x: lockout.terminal }).x : lockout.terminal, label: lockout.started ? 'RE-VERIFY' : 'LOCKOUT TERMINAL' }), tip: 'Press {use} at the terminal, then scan the three frozen accounts' }, { text: 'Talk to ' + lockout.hero.name, check: () => story.met.has(lockout.hero.name), target: () => lockout.npc && npcs.includes(lockout.npc) ? { x: lockout.npc.x, y: lockout.npc.y, label: lockout.hero.name.toUpperCase() } : null, tip: 'Crews are three. If you\'re full, they head back to Easton on call.' }].concat(rest)); }
+};
+const _startStage3 = startStage;
+startStage = function (d) { const was = stage.active; _startStage3(d); if (stage.active && !was && !demo.active) aplusSay(APLUS_LINES.stage, 5); };
+const _onBossDead2 = onBossDead;
+onBossDead = function (e) {
+  _onBossDead2(e);
+  if (demo.active) return;
+  if (e.type === 'queen') { aplusSay(APLUS_LINES.end, 9); return; }
+  const n = DC_ORDER.filter(id => restored[id]).length; aplusSay(APLUS_LINES.restored[Math.min(n - 1, APLUS_LINES.restored.length - 1)] || APLUS_LINES.restored[0], 5);
+};
+// Queen phase lines
+const _updateQueen = updateQueen;
+updateQueen = function (e, dt) { const ph = finale.phase; _updateQueen(e, dt); if (finale.phase !== ph && !demo.active) aplusSay(APLUS_LINES.queen[finale.phase - 1] || APLUS_LINES.queen[0], 5); };
+// teammateTalk: rescued teammate joins if there is room, otherwise goes on call
+const _teammateTalk = teammateTalk;
+teammateTalk = function (n) {
+  const ch = n.hero;
+  if (n.held) {
+    if (crew.length < CREW_MAX - 1) say(n, ch.name + ': "It had my account for six hours. Let\'s go take the rest back."', [{ label: 'Join the crew', fn: () => { joinCrew(ch); } }, { label: 'Head to Easton, we\'ll call you', fn: () => { story.met.add(ch.name); npcs.splice(npcs.indexOf(n), 1); banner(ch.name + ' heads back to Easton  ·  on call', 3); } }]);
+    else say(n, ch.name + ': "Three\'s a crew and you\'re full. I\'ll head to Easton — swap me in there."', [{ label: 'Swap someone now', fn: () => say(n, 'Who steps out?', crew.map((f, i) => ({ label: 'Swap ' + f.hero.name, fn: () => { leaveCrew(i); joinCrew(ch); } })).concat([{ label: 'Nobody', fn: () => { story.met.add(ch.name); npcs.splice(npcs.indexOf(n), 1); banner(ch.name + ' heads back to Easton  ·  on call', 3); } }])) }, { label: 'See you in Easton', fn: () => { story.met.add(ch.name); npcs.splice(npcs.indexOf(n), 1); banner(ch.name + ' heads back to Easton  ·  on call', 3); } }]);
+    return;
+  }
+  _teammateTalk(n);
+};
 bakeShared();
 player.hero = hero;
 loadWorld('easton');
