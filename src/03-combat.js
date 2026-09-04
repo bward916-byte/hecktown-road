@@ -301,7 +301,6 @@ function updateCombat(dt) {
   updateLockout(dt);
   updateWrecks(dt);
   updateSuper(dt); updateBreakpoints(); updatePortal(dt); updateGregGhost(dt);
-  if (edge.sup) useSuper();
   if (shop.open || talk.open) return;
   rebuildHash();
   updateWaves(dt);
@@ -309,6 +308,7 @@ function updateCombat(dt) {
   for (let i = enemies.length - 1; i >= 0; i--) if (enemies[i].dead) enemies.splice(i, 1);
   rebuildHash();
   player.hero = hero;
+  if (edge.sup) useSuper();
   if (edge.swap) cycleLeader();
   if (tapSwap >= 0) swapLeader(tapSwap); tapSwap = -2;
   updateForklift(dt);
