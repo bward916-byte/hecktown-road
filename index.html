@@ -26,7 +26,11 @@
   .card canvas { width: 100%; aspect-ratio: 1/1; display:block; border-radius: 8px; }
   .card .n { font-size: clamp(10px, 1.7vmin, 13px); font-weight: 700; margin-top: 4px; color:#f6ecd8; }
   .card .r { font-size: clamp(8px, 1.4vmin, 11px); color:#b9c5d6; line-height:1.15; }
-  #demoBtn { margin-top: 14px; padding: 8px 22px; font: bold 13px system-ui, -apple-system, sans-serif; letter-spacing: .12em; color:#f2b544; background: rgba(242,181,68,.08); border: 1.5px solid rgba(242,181,68,.5); border-radius: 8px; cursor:pointer; }
+  #kidRow { display:flex; align-items:center; justify-content:center; gap:10px; margin-top: 8px; }
+  #kid { width: 70px; height: 60px; }
+  #kidSay { position:relative; max-width: 260px; text-align:left; font: italic 13px Georgia, serif; color:#f6ecd8; background: rgba(246,236,216,.10); border: 1px solid rgba(242,181,68,.35); border-radius: 12px; padding: 8px 12px; }
+  #kidSay:before { content:''; position:absolute; left:-8px; top:50%; margin-top:-6px; border: 6px solid transparent; border-right-color: rgba(242,181,68,.35); }
+  #demoBtn { margin-top: 10px; padding: 8px 22px; font: bold 13px system-ui, -apple-system, sans-serif; letter-spacing: .12em; color:#f2b544; background: rgba(242,181,68,.08); border: 1.5px solid rgba(242,181,68,.5); border-radius: 8px; cursor:pointer; }
   #demoBtn:hover { background: rgba(242,181,68,.2); }
   #hint { margin-top: 10px; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: clamp(10px, 1.8vmin, 13px); color:#8f9db3; }
   #rotate { display:none; position:fixed; inset:0; z-index:20; background:#101a2e; color:#f6ecd8; align-items:center; justify-content:center; text-align:center; font-family: Georgia, serif; font-size: 20px; padding: 24px; }
@@ -41,8 +45,9 @@
     <p class="sub">A Phillips Pet Adventure</p>
     <p class="promise">11:52 p.m. at Easton HQ. The new B2B site goes live at midnight and the network just went dark. Pick who's on call.</p>
     <div id="grid"></div>
+    <div id="kidRow"><canvas id="kid" width="140" height="120"></canvas><div id="kidSay">At least watch the demo and learn more about this Phillips adventure!</div></div>
     <button id="demoBtn">&#9654; WATCH DEMO</button>
-    <div id="hint">Move: arrows / A D &nbsp;•&nbsp; Jump: space / W &nbsp;•&nbsp; Dash: shift / K &nbsp;•&nbsp; Use: E &nbsp;•&nbsp; Take point: C &nbsp;•&nbsp; Sound: M &nbsp;•&nbsp; Weather: Q &nbsp;•&nbsp; Time: T</div>
+    <div id="hint">Move: arrows / A D &nbsp;•&nbsp; Jump: space / W &nbsp;•&nbsp; Dash: shift / K &nbsp;•&nbsp; Use: E &nbsp;•&nbsp; Take point: C &nbsp;•&nbsp; Super: V &nbsp;•&nbsp; Sound: M &nbsp;•&nbsp; Weather: Q &nbsp;•&nbsp; Time: T</div>
   </div>
 </div>
 <div id="rotate">Turn your phone sideways.<br><small style="font-family:system-ui;font-size:14px;color:#8f9db3">HECKTOWN ROAD plays in landscape.</small></div>
@@ -94,9 +99,9 @@ function rr(c, x, y, w, h, r) {
 
 /* ---------------- input ---------------- */
 const keys = {};
-const tk = { left: 0, right: 0, jump: 0, dash: 0, weather: 0, time: 0, use: 0, swap: 0, nip: 0 };
-const prev = { jump: 0, dash: 0, weather: 0, time: 0, use: 0, swap: 0, nip: 0 };
-const edge = { jump: 0, dash: 0, weather: 0, time: 0, use: 0, swap: 0, nip: 0 };
+const tk = { left: 0, right: 0, jump: 0, dash: 0, weather: 0, time: 0, use: 0, swap: 0, nip: 0, sup: 0 };
+const prev = { jump: 0, dash: 0, weather: 0, time: 0, use: 0, swap: 0, nip: 0, sup: 0 };
+const edge = { jump: 0, dash: 0, weather: 0, time: 0, use: 0, swap: 0, nip: 0, sup: 0 };
 let tapSwap = -2; // portrait tapped this frame (-2 none)
 const uiTaps = []; // {x,y,w,h,fn} registered each frame by HUD draws
 let pendingTaps = [];
@@ -110,6 +115,7 @@ const BTN = [
   { id: 'dash', x: W - 150, y: H - 50, r: 28, label: 'DASH' },
   { id: 'use', x: W - 118, y: H - 118, r: 24, label: 'USE' },
   { id: 'nip', x: W - 190, y: H - 118, r: 22, label: 'NIP', when: () => typeof catnip !== 'undefined' && catnip.n > 0 },
+  { id: 'sup', x: W - 236, y: H - 60, r: 26, label: 'SUPER', when: () => typeof superReady === 'function' && superReady() },
   { id: 'weather', x: W - 46, y: 46, r: 20, label: 'Q' },
   { id: 'time', x: W - 96, y: 46, r: 20, label: 'T' },
 ];
@@ -155,6 +161,7 @@ function syncInput() {
   tk.use = (keys.KeyE || keys.Enter || touch.btn.use || (gp && gp.buttons[3].pressed)) ? 1 : 0;
   tk.swap = (keys.KeyC || keys.Tab || (gp && gp.buttons[5].pressed)) ? 1 : 0;
   tk.nip = (keys.KeyX || touch.btn.nip || (gp && gp.buttons[4].pressed)) ? 1 : 0;
+  tk.sup = (keys.KeyV || touch.btn.sup || (gp && gp.buttons[6].pressed)) ? 1 : 0;
   for (const k in edge) { edge[k] = tk[k] && !prev[k] ? 1 : 0; prev[k] = tk[k]; }
 }
 
@@ -194,7 +201,7 @@ const ROSTER = [
   { name: 'Greg', role: 'BI Wizard', perk: 'Dashboard', skin: '#f1c9a5', hair: '#a8632c', style: 'wavy', shirt: '#6b5b8f', pants: '#2b2f3a', acc: 'cardigan' },
   { name: 'Ryan', role: 'Dev Manager', perk: 'Sprint', skin: '#e4b58f', hair: '#2a1e18', style: 'short', shirt: '#c25a3a', pants: '#26293a', acc: 'backpack' },
   { name: 'Jose', role: 'System Architect', perk: 'Blueprint', skin: '#c9906a', hair: '#1a1410', style: 'swept', shirt: '#2f7f8f', pants: '#2b2f3a', acc: 'plans' },
-  { name: 'Ashwini', role: 'Salesforce Engineer', perk: 'Flow', skin: '#c48a62', hair: '#1a1410', style: 'bun', shirt: '#4a6fd8', pants: '#26293a', acc: 'cloud' },
+  { name: 'Ash', role: 'Salesforce Engineer', perk: 'Flow', skin: '#c48a62', hair: '#1a1410', style: 'bun', shirt: '#4a6fd8', pants: '#26293a', acc: 'cloud' },
 ];
 
 // Draws a character. (c, x, y) = feet center. facing ±1. pose: {run:0..1, air:bool, squash, stretch, dash}
@@ -203,7 +210,7 @@ function drawHero(c, ch, x, y, facing, pose, lit) {
   const sq = pose.squash || 1, st = pose.stretch || 1;
   c.save();
   c.translate(x, y);
-  c.scale(facing * sq, st);
+  const bigS = pose.big || 1; c.scale(facing * sq * bigS, st * bigS);
   if (pose.moving && !pose.air) c.rotate(0.06); // lean into the run
   const legA = pose.air ? 0.35 : Math.sin(run * Math.PI * 2) * (pose.moving ? 0.8 : 0);
   const bob = pose.moving && !pose.air ? Math.abs(Math.sin(run * Math.PI * 2)) * 2 : 0;
@@ -879,11 +886,13 @@ function render() {
   for (const p of parts) if (p.k === 'leaf') { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.t * 3 + p.ph); ctx.fillStyle = p.col; ctx.beginPath(); ctx.ellipse(0, 0, 5, 2.5, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
   // fireflies
   if (night > 0.3) { for (const f of fireflies) { const a = (Math.sin(gameTime * f.sp + f.ph) + 1) / 2; if (a < 0.2) continue; const fx = f.x + Math.sin(gameTime * 0.6 + f.ph) * 30, fy = f.y + Math.cos(gameTime * 0.4 + f.ph * 2) * 14; ctx.fillStyle = rgba([220, 255, 120], a * night); ctx.beginPath(); ctx.arc(fx, fy, 2, 0, Math.PI * 2); ctx.fill(); } }
+  drawMonoPass(); // the past: everything so far goes gray; actors below stay in color
   // cast-shadow setup: low sun → long shadows away from the sun; night → short, from the nearest light
   { const sunUp = hour > 5.5 && hour < 18.8; const lowness = sunUp ? 1 - Math.abs(Math.sin(sunA)) : 0; shadowInfo.dir = sunUp ? (sunX < W / 2 ? 1 : -1) : 1; shadowInfo.len = sunUp ? 10 + lowness * 40 : 0; }
   // actors
   renderCombatBack(night);
   drawStoryLayer(night);
+  drawBreakpoints();
   drawLockout();
   drawPrologueLayer();
   drawLedgerPages();
@@ -899,8 +908,9 @@ function render() {
   drawBossProjs();
   drawHazards();
   for (const p of parts) if (p.k === 'trail') { ctx.globalAlpha = 0.35 * (1 - p.t / p.life); drawHero(ctx, hero, p.x, p.y, p.f, { t: 0, air: true }, null); ctx.globalAlpha = 1; }
-  if (!forklift.mounted && !(player.inv > 0 && player.inv < 1.15 && Math.floor(gameTime * 20) % 2)) drawHero(ctx, hero, player.x, player.y, player.facing, { t: player.t, run: player.run, moving: player.moving, air: !player.onGround, squash: player.squash, stretch: player.stretch }, nearestLight(player.x, player.y - 30, night));
+  if (!forklift.mounted && !(player.inv > 0 && player.inv < 1.15 && Math.floor(gameTime * 20) % 2)) drawHero(ctx, hero, player.x, player.y, player.facing, { t: player.t, run: player.run, moving: player.moving, air: !player.onGround, squash: player.squash, stretch: player.stretch, big: player.big || 1 }, nearestLight(player.x, player.y - 30, night));
   renderCombatFront(night);
+  drawPortal();
   drawStoryFront();
   // front particles
   for (const p of parts) {
@@ -963,6 +973,7 @@ function render() {
   drawCombatHUD();
   drawCrewHUD();
   drawForkliftHUD();
+  drawSuperHUD();
   drawLedgerHUD();
   drawAudioHUD();
   drawAplus();
@@ -1094,6 +1105,7 @@ function buildTitle() {
     grid.appendChild(card);
   });
   const db = document.getElementById('demoBtn'); if (db) db.addEventListener('click', () => startDemo());
+  const kc = document.getElementById('kid'); if (kc) { const kg = kc.getContext('2d'); const KID = { name: 'Kid', skin: '#f1c9a5', hair: '#a8632c', style: 'cap', shirt: '#c25a3a', pants: '#2f6f9f', acc: 'none' }; kg.translate(70, 112); kg.scale(1.15, 1.15); drawHero(kg, KID, 0, 0, 1, { t: 0, run: 0, moving: false }, { i: 1, color: [242, 181, 68], side: 1 }); }
 }
 
 /* =====================================================================
@@ -1263,7 +1275,7 @@ const WEAPONS = {
   'Greg':       { name: 'Dashboard Drones', kind: 'orbit',  cd: 0.55, dmg: 2, range: 380, speed: 620, drones: 2, color: [190, 120, 255] },
   'Ryan':       { name: 'Sprint Blades',   kind: 'blades',  cd: 0.18, dmg: 2, range: 52, color: [220, 225, 235] },
   'Jose':       { name: 'Blueprint Turret', kind: 'turret', cd: 4.5, dmg: 2, range: 360, life: 6, fireCd: 0.32, color: [90, 160, 255] },
-  'Ashwini':    { name: 'Apex Trigger',    kind: 'trigger', cd: 0.22, dmg: 4, range: 230, color: [110, 170, 255] },
+  'Ash':    { name: 'Apex Trigger',    kind: 'trigger', cd: 0.22, dmg: 4, range: 230, color: [110, 170, 255] },
 };
 function weaponOf(h) { return WEAPONS[h.name]; }
 
@@ -1278,7 +1290,7 @@ function updateShooter(sh, dt, isLeader) {
   const p = shooterPos(sh); const range = w.range * rangeMul(sh);
   // persistent things
   if (w.kind === 'orbit') { if (!sh.drones) sh.drones = [{ a: 0, cd: 0 }, { a: Math.PI, cd: 0.27 }]; for (const d of sh.drones) { d.a += dt * 2.2; d.x = p.x + Math.cos(d.a) * 42; d.y = p.y - 10 + Math.sin(d.a) * 18; d.cd -= dt; if (d.cd <= 0) { const t = nearestEnemy(d.x, d.y, range); if (t) { d.cd = w.cd * rateMul(sh); fireDart(d.x, d.y, t, w, mul, 0); } } } return; }
-  if (w.kind === 'blades') { if (!sh.bladeA) sh.bladeA = 0; sh.bladeA += dt * 9; if (sh.wcd <= 0) { let hitAny = false; forEnemiesNear(p.x, p.y, 70, e => { if ((e.x - p.x) ** 2 + (e.y - e.h / 2 - p.y) ** 2 < (w.range * rangeMul(sh) + e.w / 2) ** 2) { damageEnemy(e, w.dmg * mul); hitAny = true; } }); sh.wcd = w.cd * rateMul(sh); if (hitAny) shake = Math.max(shake, 0.02); } return; }
+  if (w.kind === 'blades') { if (!sh.bladeA) sh.bladeA = 0; sh.bladeA += dt * 9; const bb = sh.bladeBoost > 0 ? 2 : 1; if (sh.wcd <= 0) { let hitAny = false; forEnemiesNear(p.x, p.y, 70 * bb, e => { if ((e.x - p.x) ** 2 + (e.y - e.h / 2 - p.y) ** 2 < (w.range * rangeMul(sh) * bb + e.w / 2) ** 2) { damageEnemy(e, w.dmg * mul); hitAny = true; } }); sh.wcd = w.cd * rateMul(sh); if (hitAny) shake = Math.max(shake, 0.02); } return; }
   if (w.kind === 'trigger') { // event-driven: strikes enemies the moment they enter range
     if (!sh.seen) sh.seen = new Set();
     if (sh.wcd > 0) return;
@@ -1398,6 +1410,8 @@ function updateCombat(dt) {
   updateAplus(dt);
   updateLockout(dt);
   updateWrecks(dt);
+  updateSuper(dt); updateBreakpoints(); updatePortal(dt);
+  if (edge.sup) useSuper();
   if (shop.open || talk.open) return;
   rebuildHash();
   updateWaves(dt);
@@ -1477,7 +1491,7 @@ function renderCombatFront(night) {
     if (p.k === 'dart') { ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * 0.018, p.y - p.vy * 0.018); ctx.stroke(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2); ctx.fill(); }
     else if (p.k === 'line') { ctx.lineWidth = 2; ctx.globalAlpha = 0.9; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * 0.045, p.y - p.vy * 0.045); ctx.stroke(); ctx.globalAlpha = 1; }
     else if (p.k === 'homing') { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(Math.atan2(p.vy, p.vx)); ctx.fillStyle = '#fff'; rr(ctx, -7, -5, 14, 10, 2); ctx.fill(); ctx.strokeStyle = '#c9a56a'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-7, -5); ctx.lineTo(0, 1); ctx.lineTo(7, -5); ctx.stroke(); ctx.restore(); }
-    else if (p.k === 'lob') { ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(p.x - 2, p.y - 2, 2, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = rgba(p.c, 0.6); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(p.x, p.y, 9 + Math.sin(p.t * 20) * 2, 0, Math.PI * 2); ctx.stroke(); }
+    else if (p.k === 'lob') { ctx.beginPath(); ctx.arc(p.x, p.y, p.big ? 14 : 6, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(p.x - 2, p.y - 2, 2, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = rgba(p.c, 0.6); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(p.x, p.y, 9 + Math.sin(p.t * 20) * 2, 0, Math.PI * 2); ctx.stroke(); }
   }
   for (const b of beams) {
     const a = 1 - b.t / b.life;
@@ -1743,7 +1757,7 @@ function drawShooterExtras(sh, w) {
   if (!w) return;
   ctx.save(); ctx.globalCompositeOperation = 'lighter';
   if (w.kind === 'orbit' && sh.drones) for (const d of sh.drones) { ctx.fillStyle = rgb(w.color); ctx.beginPath(); ctx.arc(d.x, d.y, 5, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillRect(d.x - 2, d.y - 1, 4, 2); ctx.strokeStyle = rgba(w.color, 0.4); ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(d.x, d.y, 9, gameTime * 6, gameTime * 6 + 2); ctx.stroke(); }
-  if (w.kind === 'blades' && story.weaponsOnline) { const p = shooterPos(sh); const n = 2 + extraCount(sh); for (let k = 0; k < n; k++) { const an = (sh.bladeA || 0) + k * Math.PI * 2 / n; const bx = p.x + Math.cos(an) * 46, by = p.y + Math.sin(an) * 30; ctx.save(); ctx.translate(bx, by); ctx.rotate(an + Math.PI / 2); ctx.fillStyle = rgb(w.color); ctx.beginPath(); ctx.moveTo(-3, -12); ctx.lineTo(3, -12); ctx.lineTo(1, 12); ctx.lineTo(-1, 12); ctx.closePath(); ctx.fill(); ctx.restore(); } ctx.strokeStyle = rgba(w.color, 0.25); ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(p.x, p.y, 46, 30, 0, 0, Math.PI * 2); ctx.stroke(); }
+  if (w.kind === 'blades' && story.weaponsOnline) { const p = shooterPos(sh); const bb = sh.bladeBoost > 0 ? 2 : 1; const n = (2 + extraCount(sh)) * bb; for (let k = 0; k < n; k++) { const an = (sh.bladeA || 0) + k * Math.PI * 2 / n; const bx = p.x + Math.cos(an) * 46 * bb, by = p.y + Math.sin(an) * 30 * bb; ctx.save(); ctx.translate(bx, by); ctx.rotate(an + Math.PI / 2); ctx.fillStyle = rgb(w.color); ctx.beginPath(); ctx.moveTo(-3, -12); ctx.lineTo(3, -12); ctx.lineTo(1, 12); ctx.lineTo(-1, 12); ctx.closePath(); ctx.fill(); ctx.restore(); } ctx.strokeStyle = rgba(w.color, 0.25); ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(p.x, p.y, 46, 30, 0, 0, Math.PI * 2); ctx.stroke(); }
   if (sh.buff > 0) { const p = shooterPos(sh); ctx.strokeStyle = rgba([242, 181, 68], 0.18 * Math.min(1, sh.buff)); ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(p.x, p.y + 30, 24, 6, 0, 0, Math.PI * 2); ctx.stroke(); }
   ctx.restore();
 }
@@ -2744,7 +2758,7 @@ WORLD_DEFS.merge = makeDC({
   steps: [{ type: 'scan', name: 'Map the fields: scan in posted order', time: 34, n: 3, ordered: true }, { type: 'valves', name: 'Cut over: switch the feeds in order', time: 40, n: 3 }, { type: 'boss', name: 'Boss' }],
   hazard: 'none', encounter: ['packet', 'packet', 'ghost'],
 });
-WORLD_DEFS.merge.door.roles = ['Umesh', 'Ashwini', 'Dave', 'Jose']; WORLD_DEFS.merge.door.rolesNeeded = 2;
+WORLD_DEFS.merge.door.roles = ['Umesh', 'Ash', 'Dave', 'Jose']; WORLD_DEFS.merge.door.rolesNeeded = 2;
 const ACT3 = ['sacramento', 'aurora'];
 WORLD_DEFS.easton.driveOptions = () => [{ label: 'Taunton, MA', to: 'taunton' }].concat(restored.taunton ? [{ label: 'Spartanburg, SC', to: 'spartanburg' }] : []).concat(restored.spartanburg ? ACT2.map(id => ({ label: WORLD_DEFS[id].name + (restored[id] ? ' ✓' : ''), to: id })) : []).concat(ACT2.every(id => restored[id]) ? ACT3.map(id => ({ label: WORLD_DEFS[id].name + (restored[id] ? ' ✓' : ''), to: id })) : []).concat(ACT3.every(id => restored[id]) ? [{ label: 'The Merge' + (restored.merge ? ' ✓' : ''), to: 'merge' }] : []);
 
@@ -3158,28 +3172,31 @@ const demo = { active: false, idx: 0, t: 0, caption: '', script: [] };
 function demoCrew(names) { crew.length = 0; for (const n of names) { const ch = ROSTER.find(r => r.name === n); if (!ch || ch === hero) continue; const q = npcs.find(z => z.hero === ch); if (q) npcs.splice(npcs.indexOf(q), 1); crew.push({ hero: ch, x: player.x - 30 - crew.length * 24, y: player.y, vx: 0, vy: 0, w: 22, h: 52, facing: 1, onGround: true, wall: 0, run: 0, t: rnd(0, 5), moving: false, wcd: rnd(0, 0.5), state: 'idle', wander: 0 }); story.met.add(n); } for (const m of crewAll()) SKILL[m.hero.name] = 6; }
 function demoBoss(type) { const d = WORLD.def.door; if (!d) return; stage.active = true; stage.door = d; stage.step = 2; stage.fails = 0; arena.active = true; arena.x0 = d.x0; arena.x1 = d.x1; arena.door = d; const b = spawnBoss(type, d.x1 - 160, groundYAt(d.x1 - 160)); arena.boss = b; if (b) b.tx = clamp(player.x + 320, d.x0 + 60, d.x1 - 60); player.x = d.x0 + 60; player.y = groundYAt(player.x); for (const f of crew) { f.x = player.x - 30; f.y = player.y; } }
 const DEMO_SCRIPT = [
-  { world: 'prologue', x: 200, hour: 15.5, weather: 0, cap: '1938. A feed store on a county road, and one promise.', dur: 10, goals: [{ x: 360, y: 424, act: 'use' }, { x: () => WORLD.horse.x - 30, act: 'use', pause: 1.2 }, { x: 1000, act: 'use' }, { x: 2260, act: 'use' }] },
+  { world: 'easton', x: 700, hour: 18.6, weather: 0, cap: 'Easton, Pennsylvania. The Executive Chairman stops by the front door with a story about his grandfather.', dur: 9, goals: [{ x: 850, act: 'use', pause: 4 }], setup: () => { story.weaponsOnline = false; for (let i = npcs.length - 1; i >= 0; i--) if (npcs[i].hero) npcs.splice(i, 1); addBlaine(890); } },
+  { world: 'prologue', x: 200, hour: 15.5, weather: 0, cap: '1938. Germansville, Pennsylvania. One feed store, Purina chows, a wagon, and a promise.', dur: 12, goals: [{ x: 360, y: 424, act: 'use' }, { x: () => WORLD.horse.x - 30, act: 'use', pause: 1.2 }, { x: 1000, act: 'use' }, { x: 2260, act: 'use' }] },
   { world: 'easton', x: 300, hour: 23.9, weather: 0, cap: 'Easton, PA. 11:52 PM. The new site goes live at midnight.', dur: 7, goals: [{ x: 990, pause: 1.5 }], setup: () => { story.weaponsOnline = false; } },
   { world: 'easton', x: 1380, hour: 23.92, weather: 0, cap: 'Carry the order to the dock. Scan the tagged pallets.', dur: 14, goals: [{ x: 1470, y: 412, act: 'use' }, { x: 2090, y: 392, act: 'use', pause: 1.2 }, { x: 1800, y: 392, act: 'use' }, { x: 2000, y: 392, act: 'use' }, { x: 2300, y: 392, act: 'use' }], setup: () => { story.weaponsOnline = false; spawnPackage(1470, 412, 'BAY 2'); addScan(1800, 392, 'SKU 11938'); addScan(2000, 392, 'SKU 20415'); addScan(2300, 392, 'SKU 37471'); const rosa = npcs.find(n => n.look && n.look.name === 'Rosa'); if (rosa) rosa.acceptsPackage = () => say(rosa, 'Rosa: "That\'s the one. Now scan the three tagged pallets."'); } },
   { world: 'easton', x: 950, hour: 23.95, weather: 0, cap: 'Every scan comes back rejected. A+, the forty-year-old system, refuses the cutover — and sends its machines.', dur: 9, goals: [{ fight: 1 }], aplus: 'CUTOVER DENIED. ORDERS WILL SHIP. I WILL SHIP THEM.', setup: () => { spawnGroup(990, ['flicker', 'flicker', 'flicker', 'jitter']); banner(weaponOf(hero).name + ' online', 3); } },
   { world: 'easton', x: 950, hour: 23.96, weather: 0, cut: 'map', cap: 'A+ takes the network. Nine distribution centers go dark, one by one — and it locks your team out at each one.', dur: 9, aplus: 'I HAVE LOCKED THE OTHERS OUT. THEY WERE IN MY WAY.' },
   { world: 'easton', x: 200, hour: 23.96, weather: 0, cap: 'Only Aaron is still on campus. Recruit him — crews are three, and you need three before any boss.', dur: 9, goals: [{ x: () => { const q = npcs.find(z => z.hero); return q ? q.x - 36 : 250; }, act: 'use', pause: 2.6 }, { x: () => { const q = npcs.find(z => z.hero); return q ? q.x - 36 : 250; }, act: 'use', pause: 0.5 }, { x: 640, y: 368 }] },
-  { world: 'easton', x: 2600, hour: 23.97, weather: 0, cap: 'A+ runs robot spies: scouts, runners, haulers, couriers, shield units, cloakers. Shoot them open.', dur: 10, aplus: 'MY SCOUTS SEE EVERYTHING. MY COURIERS CARRY MY ORDERS.', goals: [{ fight: 1 }, { x: 3300 }], setup: () => { demoCrew(['Brian W', 'John']); }, fight: ['flicker', 'jitter', 'packet', 'lag', 'firewall', 'ghost'] },
+  { world: 'easton', x: 2600, hour: 23.97, weather: 0, cap: 'A+ runs robot spies: scouts, runners, haulers, couriers, shield units, cloakers. Shoot them open. Fill the meter and John goes BIG.', dur: 12, aplus: 'MY SCOUTS SEE EVERYTHING. MY COURIERS CARRY MY ORDERS.', goals: [{ fight: 1 }, { x: 3300 }], setup: () => { hero = ROSTER.find(r => r.name === 'John'); player.hero = hero; demoCrew(['Brian W', 'Aaron']); superState.meter = 100; }, fight: ['flicker', 'jitter', 'packet', 'lag', 'firewall', 'ghost'] },
+  { world: 'easton', x: 2900, hour: 23.975, weather: 0, cap: 'A+ has an idea. If the promise started in 1938, it will end it there. It opens a door.', dur: 9, aplus: 'IF THE PROMISE STARTED IN 1938, I WILL END IT THERE.', goals: [{ wait: 2.5 }, { x: 3120 }, { wait: 8 }], setup: () => { demoCrew(['Aaron']); encounters.length = 0; } },
+  { world: 'past', x: 300, hour: 14, weather: 0, cap: '1938, in black and white — except the machines that do not belong here, and the people who followed them. Keep them off the store.', dur: 14, goals: [{ fight: 1 }, { x: 1000 }], aplus: 'NO STORE. NO PROMISE. NO ORDERS TO SHIP.', setup: () => { demoCrew(['Aaron', 'Bret']); spawnGroup(700, ['flicker', 'flicker', 'jitter', 'packet', 'firewall']); } },
   { world: 'easton', x: WORLD_DEFS.easton.truckX + 450, hour: 23.98, weather: 0, cap: 'Drive the network in the Phillips truck. Hop potholes, honk at Static.', dur: 9, walk: 0, setup: () => { demoCrew(['Umesh', 'Dave']); startDrive('taunton'); } },
-  { world: 'taunton', x: 300, hour: 6.2, weather: 1, cap: 'Taunton, MA. A+ locked Bret out of the rack room. Clear the lockout, re-verify the frozen accounts, and he joins.', dur: 18, aplus: 'THIS BUILDING HAS SHIPPED 11,206 ORDERS THIS WEEK. UNDER ME.', setup: () => { demoCrew(['Aaron']); setupRescue(WORLD.def); }, goals: [{ x: () => lockout.terminal, act: 'use', pause: 1 }, { x: () => (lockout.scans[0] || { x: 500 }).x, act: 'use' }, { x: () => (lockout.scans[1] || { x: 920 }).x, act: 'use' }, { x: () => (lockout.scans[2] || { x: 1090 }).x, act: 'use' }, { x: () => lockout.npc ? lockout.npc.x - 36 : 760, act: 'use', pause: 2.8 }, { x: () => lockout.npc ? lockout.npc.x - 36 : 760, act: 'use', pause: 1 }] },
+  { world: 'taunton', x: 300, hour: 6.2, weather: 1, cap: 'Taunton, MA. A+ locked Bret out of the rack room. Clear the lockout, re-verify the frozen accounts, and he joins.', dur: 18, aplus: 'THIS BUILDING HAS SHIPPED 11,206 ORDERS THIS WEEK. UNDER ME.', setup: () => { demoCrew(['Aaron']); story.met.delete('Bret'); setupRescue(WORLD.def); }, goals: [{ x: () => lockout.terminal, act: 'use', pause: 1 }, { x: () => (lockout.scans[0] || { x: 500 }).x, act: 'use' }, { x: () => (lockout.scans[1] || { x: 920 }).x, act: 'use' }, { x: () => (lockout.scans[2] || { x: 1090 }).x, act: 'use' }, { x: () => lockout.npc ? lockout.npc.x - 36 : 760, act: 'use', pause: 2.8 }, { x: () => lockout.npc ? lockout.npc.x - 36 : 760, act: 'use', pause: 1 }] },
   { world: 'taunton', x: 1500, hour: 6.3, weather: 1, cap: 'Every DC is a boss stage: challenges under a clock, then the machine A+ seized. Fail anything and the stage restarts.', dur: 7, to: 2200, setup: () => demoCrew(['Aaron', 'Bret']) },
   { world: 'taunton', x: 2500, hour: 6.4, weather: 1, cap: 'The Fog Server: the receiving rack, hiding in the fog. It tells before it lunges — that is your window.', dur: 11, walk: 0, aplus: 'YOU CANNOT SCAN WHAT YOU CANNOT SEE.', setup: () => { demoCrew(['Aaron', 'Bret']); demoBoss('fogserver'); } },
-  { world: 'spartanburg', x: 1480, hour: 15, weather: 2, cap: 'Spartanburg, SC. Milo the alley cat sells Meowijuana.', dur: 8, goals: [{ x: 1596, act: 'use', pause: 3 }, { x: 1596, act: 'use', pause: 0.5 }], setup: () => { demoCrew(['Ryan', 'Ashwini']); bucks.n = 60; } },
-  { world: 'spartanburg', x: 800, hour: 15.2, weather: 2, cap: 'Throw a bag and every cat in the county comes running. Biscuit is not amused.', dur: 8, goals: [{ x: 820, act: 'nip', pause: 1 }, { fight: 1 }], setup: () => { demoCrew(['Ryan', 'Ashwini']); catnip.n = 1; spawnGroup(800, ['flicker', 'flicker', 'jitter', 'packet']); } },
+  { world: 'spartanburg', x: 1480, hour: 15, weather: 2, cap: 'Spartanburg, SC. Milo the alley cat sells Meowijuana.', dur: 8, goals: [{ x: 1596, act: 'use', pause: 3 }, { x: 1596, act: 'use', pause: 0.5 }], setup: () => { demoCrew(['Ryan', 'Ash']); bucks.n = 60; } },
+  { world: 'spartanburg', x: 800, hour: 15.2, weather: 2, cap: 'Throw a bag and every cat in the county comes running. Biscuit is not amused.', dur: 8, goals: [{ x: 820, act: 'nip', pause: 1 }, { fight: 1 }], setup: () => { demoCrew(['Ryan', 'Ash']); catnip.n = 1; spawnGroup(800, ['flicker', 'flicker', 'jitter', 'packet']); } },
   { world: 'spartanburg', x: 2380, hour: 15.4, weather: 2, cap: 'Hop on the forklift. Jump lifts the forks. Ram the machines.', dur: 12, goals: [{ x: 2390, act: 'use', pause: 0.4 }], setup: () => { demoCrew([]); placeForklift(2420); spawnGroup(2700, ['flicker', 'lag', 'packet', 'flicker', 'lag']); } },
-  { world: 'spartanburg', x: 2700, hour: 15.6, weather: 2, cap: 'The Peach Pit: a stretch-wrap turntable that throws peaches and rolls.', dur: 9, walk: 0, setup: () => { demoCrew(['Ryan', 'Ashwini']); demoBoss('peachpit'); } },
+  { world: 'spartanburg', x: 2700, hour: 15.6, weather: 2, cap: 'The Peach Pit: a stretch-wrap turntable that throws peaches and rolls.', dur: 9, walk: 0, setup: () => { demoCrew(['Ryan', 'Ash']); demoBoss('peachpit'); } },
   { world: 'plantcity', x: 600, hour: 19.6, weather: 0, cap: 'Plant City, FL. Valve puzzles, rising water, and the Drainpipe heads.', dur: 8, walk: 0, setup: () => { demoCrew(['Bret', 'Greg']); demoBoss('drainpipe'); } },
   { world: 'lansing', x: 600, hour: 8.5, weather: 3, cap: 'Lansing, MI. Ice underfoot and a runaway snowplow.', dur: 8, walk: 0, setup: () => { demoCrew(['Bret', 'Greg']); demoBoss('snowdrift'); } },
   { world: 'billings', x: 600, hour: 16.5, weather: 0, cap: 'Billings, MT. Wind gusts shove you off ledges. Gale only falls when its blades stall.', dur: 8, walk: 0, setup: () => { demoCrew(['Aaron', 'John']); demoBoss('gale'); } },
   { world: 'portland', x: 600, hour: 11.2, weather: 2, cap: 'Portland, OR. Belts drag you toward the Conveyor Hydra.', dur: 8, walk: 0, setup: () => { demoCrew(['Aaron', 'John']); demoBoss('hydra'); } },
   { world: 'sacramento', x: 2700, hour: 18.9, weather: 0, cap: 'West Sacramento, CA. Walk the shelter dogs to Grace. Then the Crane drops containers.', dur: 10, goals: [{ x: 3400, pause: 2 }], setup: () => { demoCrew(['Rianan', 'Umesh']); stage.active = true; arena.active = true; arena.x0 = 2680; arena.x1 = 3500; stage.door = WORLD.def.door; stage.step = 0; spawnAnimals(2740, 4); const g = npcs.find(n => !n.hero && !n.cat); if (g) { g.x = 3440; g.y = 440; } } },
-  { world: 'aurora', x: 2700, hour: 5.4, weather: 3, cap: 'Aurora, CO. The brand-new DC. Hold the go-live gate for 55 seconds.', dur: 9, walk: 0, setup: () => { demoCrew(['Dave', 'Ashwini']); demoBoss('gate'); } },
-  { world: 'merge', x: 2700, hour: 2.5, weather: 1, cap: 'The Merge: the Central Pet legacy DC. Only Umesh, Ashwini, Dave or Jose can hurt the Schema Golem.', dur: 9, walk: 0, setup: () => { demoCrew(['Umesh', 'Ashwini']); demoBoss('golem'); } },
+  { world: 'aurora', x: 2700, hour: 5.4, weather: 3, cap: 'Aurora, CO. The brand-new DC. Hold the go-live gate for 55 seconds.', dur: 9, walk: 0, setup: () => { demoCrew(['Dave', 'Ash']); demoBoss('gate'); } },
+  { world: 'merge', x: 2700, hour: 2.5, weather: 1, cap: 'The Merge: the Central Pet legacy DC. Only Umesh, Ash, Dave or Jose can hurt the Schema Golem.', dur: 9, walk: 0, setup: () => { demoCrew(['Umesh', 'Ash']); demoBoss('golem'); } },
   { world: 'easton', x: 1720, hour: 23.99, weather: 0, cap: 'Easton, 11:59. The Cutover Key opens the home warehouse. Everyone you freed joins, and A+ shows its true form.', dur: 12, aplus: 'I HAVE RUN AT MIDNIGHT EVERY NIGHT SINCE 1985.', walk: 0, setup: () => { demoCrew(['Brian S', 'Jose']); story.cutoverKey = true; WORLD_DEFS.easton.door = EASTON_DOOR; demoBoss('queen'); finale.active = true; finale.everyone.length = 0; for (const n of npcs.slice()) { if (!n.hero) continue; finale.everyone.push({ hero: n.hero, x: 1760 + finale.everyone.length * 40, y: 392, vx: 0, vy: 0, w: 22, h: 52, facing: 1, onGround: true, wall: 0, run: 0, t: rnd(0, 5), moving: false, wcd: rnd(0, 0.8), state: 'idle', wander: 0, extra: true }); npcs.splice(npcs.indexOf(n), 1); } } },
   { world: 'easton', x: 1900, hour: 0.05, weather: 0, cap: 'You do not destroy A+. You finish the cutover with it. GO LIVE — OK.', dur: 10, aplus: 'GO LIVE — OK.   A+ ARCHIVED.   THANK YOU FOR THE ORDERS.', walk: 0, y: 392, setup: () => { startEnding(); ledger.found.add(0); ledger.found.add(1); } },
   { world: 'show', x: 900, hour: 10, weather: 0, cap: 'HECKTOWN ROAD  ·  press any key or tap to play', dur: 10, to: 1700, setup: () => demoCrew(['Rianan', 'Greg']) },
@@ -3257,7 +3274,7 @@ function updateDemo(dt) {
   } else {
     const g = pilotGoal();
     if (g) {
-      if (g.wait) { if (pilot.waitT <= 0 && !g.started) { g.started = true; pilot.waitT = g.wait; } else if (g.started && pilot.waitT <= 0) pilot.gi++; }
+      if (g.wait) { if (pilot.waitT <= 0 && !g.started) { g.started = true; pilot.waitT = g.wait; } else if (g.started && pilot.waitT <= 0) { pilot.gi++; if (s.aplus && /1938/.test(s.aplus) && !portal.active) openPortal(3140, 'past'); } }
       else if (g.fight) { if (!pilotCombat(dt)) pilot.gi++; }
       else {
         const gx = typeof g.x === 'function' ? g.x() : g.x; const gy = typeof g.y === 'function' ? g.y() : g.y;
@@ -3275,14 +3292,16 @@ function updateDemo(dt) {
     }
   }
   if (demo.throwAt && demo.t > demo.throwAt) { throwCatnip(); demo.throwAt = 0; }
+  if (superReady() && nearestEnemy(player.x, player.y - 30, 400)) useSuper(); else if (arena.active && superState.meter < 100) superState.meter += dt * 12;
   if (demo.t >= s.dur) demoNext();
 }
 function drawDemoHUD() {
   if (!demo.active) return;
   const sc = DEMO_SCRIPT[demo.idx]; const cut = sc && sc.cut === 'map'; if (cut) { drawMapCutscene(demo.t); drawAplus(); }
-  const cy = cut ? H - 70 : 86;
-  ctx.fillStyle = 'rgba(16,26,46,.7)'; rr(ctx, W / 2 - 400, cy, 800, 40, 10); ctx.fill();
-  ctx.textAlign = 'center'; ctx.font = 'italic 15px Georgia, serif'; ctx.fillStyle = '#f6ecd8'; ctx.fillText(demo.caption, W / 2, cy + 26); ctx.textAlign = 'right';
+  const cy = cut ? H - 84 : (aplus.cur ? 172 : 86);
+  ctx.font = 'italic 15px Georgia, serif'; const words = demo.caption.split(' '); const lines = []; let line = ''; for (const wd of words) { const t = line + wd + ' '; if (ctx.measureText(t).width > 760) { lines.push(line.trim()); line = wd + ' '; } else line = t; } lines.push(line.trim());
+  const bh = 14 + lines.length * 20; ctx.fillStyle = 'rgba(16,26,46,.7)'; rr(ctx, W / 2 - 400, cy, 800, bh, 10); ctx.fill();
+  ctx.textAlign = 'center'; ctx.fillStyle = '#f6ecd8'; lines.forEach((l, i) => ctx.fillText(l, W / 2, cy + 24 + i * 20)); ctx.textAlign = 'right';
   ctx.font = 'bold 11px system-ui, sans-serif'; ctx.fillStyle = 'rgba(242,181,68,.9)'; ctx.fillText('DEMO ' + (demo.idx + 1) + '/' + DEMO_SCRIPT.length + '  ·  any key to play', W - 22, 74); ctx.textAlign = 'left';
 }
 function demoExit() { if (!demo.active) return; demo.active = false; location.reload(); }
@@ -3322,7 +3341,7 @@ const APLUS_LINES = {
 };
 
 /* ---------- who is found where ---------- */
-const RESCUE_ORDER = ['Aaron', 'Bret', 'Dave', 'Umesh', 'John', 'Ryan', 'Greg', 'Brian S', 'Ashwini', 'Jose', 'Brian W'];
+const RESCUE_ORDER = ['Aaron', 'Bret', 'Dave', 'Umesh', 'John', 'Ryan', 'Greg', 'Brian S', 'Ash', 'Jose', 'Brian W'];
 const DC_ORDER = ['taunton', 'spartanburg', 'plantcity', 'lansing', 'billings', 'portland', 'sacramento', 'aurora', 'merge'];
 function rescuePlan() {
   const list = RESCUE_ORDER.filter(n => n !== hero.name); const plan = { easton: [list[0]] };
@@ -3340,7 +3359,7 @@ function setupRescue(def) {
   if (story.met.has(name) || crew.some(f => f.hero.name === name) || hero.name === name) return;
   const ch = heroByName(name); const x = def.rescueX || 760;
   lockout.active = true; lockout.hero = ch; lockout.x = x; lockout.barrier = true; lockout.t = 0;
-  lockout.npc = addNPC({ hero: ch, look: ch, x, y: groundYAt(x), facing: -1, held: true, onTalk: (n) => { if (lockout.barrier) say(n, ch.name + ': "It locked me out of ' + ({ Aaron: 'the switch stack', Bret: 'the rack room', Dave: 'my green screen — it\'s looping', Umesh: 'EDI. Every 850 bounced', John: 'the job scheduler', Ryan: 'the deploy pipeline', Greg: 'every dashboard I own', 'Brian S': 'the admin console', Ashwini: 'Salesforce. It spoofed my login', Jose: 'the architecture repo', 'Brian W': 'the database' }[ch.name] || 'everything') + '. The terminal by the door — that\'s the lockout. Clear it."'); else teammateTalk(n); } });
+  lockout.npc = addNPC({ hero: ch, look: ch, x, y: groundYAt(x), facing: -1, held: true, onTalk: (n) => { if (lockout.barrier) say(n, ch.name + ': "It locked me out of ' + ({ Aaron: 'the switch stack', Bret: 'the rack room', Dave: 'my green screen — it\'s looping', Umesh: 'EDI. Every 850 bounced', John: 'the job scheduler', Ryan: 'the deploy pipeline', Greg: 'every dashboard I own', 'Brian S': 'the admin console', Ash: 'Salesforce. It spoofed my login', Jose: 'the architecture repo', 'Brian W': 'the database' }[ch.name] || 'everything') + '. The terminal by the door — that\'s the lockout. Clear it."'); else teammateTalk(n); } });
   lockout.terminal = x - 110;
 }
 function updateLockout(dt) {
@@ -3602,6 +3621,181 @@ function drawMapCutscene(t) {
   pins.forEach(([n, x, y], i) => { const red = t > 1.2 + i * 0.55; ctx.fillStyle = red ? '#ff5a5a' : '#7fe0a0'; ctx.beginPath(); ctx.arc(x, y, red ? 7 + Math.sin(t * 8) * 1.5 : 5, 0, Math.PI * 2); ctx.fill(); if (red) { ctx.strokeStyle = 'rgba(255,90,90,.5)'; ctx.beginPath(); ctx.arc(x, y, 14 + (t * 30 % 12), 0, Math.PI * 2); ctx.stroke(); } ctx.fillStyle = red ? '#ff8a8a' : '#c8f0d0'; ctx.font = '11px monospace'; ctx.textAlign = 'center'; ctx.fillText(n.toUpperCase() + (red ? '  OFFLINE' : ''), x, y + 22); });
   ctx.textAlign = 'left';
 }
+
+/* =====================================================================
+   PEOPLE, SUPERS, BREAKPOINTS, 1938 CINEMA (M11)
+   ===================================================================== */
+
+/* ---------- who these people are ---------- */
+(function bios() {
+  const set = (n, o) => { const r = ROSTER.find(x => x.name === n); if (r) Object.assign(r, o); };
+  set('Aaron', { role: 'Infrastructure Manager', face: 'short-beard' });
+  set('Bret', { role: 'Hardware & Infrastructure' });
+  set('Greg', { role: 'Data Architect' });
+  set('Ash', { role: 'Salesforce Genius' });
+})();
+const FLAVOR = {
+  Aaron: ['Aaron: "Racks are humming, switches are green. Where do you need me?"', 'Aaron: "I trimmed the beard for the launch. Nobody noticed. Good."'],
+  Bret: ['Bret: "Baby boy finally sleeps through the night — I can give you the whole shift."', 'Bret: "Is Biscuit coming? Biscuit\'s coming. Good. Dogs first, hardware second."', 'Bret: "If it has a power supply, I can fix it. If it has firmware, I can fix it faster."'],
+  Rianan: ['Rianan: "That alley cat has a business plan. I respect it. I also want to pet it."', 'Rianan: "Every cat in this county is now my responsibility. Fine."'],
+  Greg: ['Greg: "Three-dimensional data models. I can see the whole network from here. It\'s ugly. We\'ll fix it."', 'Greg: "Give me a fact table and a quiet room and I will kick data ass."'],
+  Ash: ['Ash: "Salesforce is talking to me again. It apologized. We\'re fine."', 'Ash: "Call me Ash. And yes, the flow will hold."'],
+  Dave: ['Dave: "Forty years of green screens and this is the first one that talked back."'],
+  Umesh: ['Umesh: "Every 850 in the queue is mine again. It can keep the 997s."'],
+  John: ['John: "The scheduler\'s clean. Nothing runs at midnight tonight unless we say so."'],
+  Ryan: ['Ryan: "Pipeline\'s green. Whatever you\'re about to do, I can ship it."'],
+  'Brian S': ['Brian S: "Admin console\'s ours. It changed the wallpaper. Petty."'],
+  'Brian W': ['Brian W: "The database is fine. The database is always fine. It\'s everything around it."'],
+  Jose: ['Jose: "Two schemas, one warehouse. I drew the diagram. It has a dragon on it now."'],
+};
+const _teammateTalk2 = teammateTalk;
+teammateTalk = function (n) {
+  const ch = n.hero;
+  if (!n.held && story.turnDone && FLAVOR[ch.name] && Math.random() < 0.5 && crew.length >= CREW_MAX - 1 && !crew.some(f => f.hero === ch)) { const L = FLAVOR[ch.name]; say(n, L[(Math.random() * L.length) | 0], [{ label: 'Swap in', fn: () => _teammateTalk2(n) }, { label: 'Later', fn: null }]); return; }
+  _teammateTalk2(n);
+};
+
+/* facial hair on drawHero: short beard + mustache */
+const _drawHero = drawHero;
+drawHero = function (c, ch, x, y, facing, pose, lit) {
+  _drawHero(c, ch, x, y, facing, pose, lit);
+  if (!ch.face) return;
+  const sq = pose.squash || 1, st = pose.stretch || 1, big = pose.big || 1;
+  c.save(); c.translate(x, y); c.scale(facing * sq * big, st * big);
+  const bob = pose.moving && !pose.air ? Math.abs(Math.sin((pose.run || 0) * Math.PI * 2)) * 2 : 0; c.translate(0, -bob);
+  const legLen = 18, torsoY = -legLen - 22 + (pose.moving ? 0 : Math.sin((pose.t || 0) * 2) * 0.8), hy = torsoY - 12;
+  if (ch.face === 'short-beard') { c.fillStyle = shade(ch.hair, 1.05); c.beginPath(); c.moveTo(-6, hy + 2); c.quadraticCurveTo(0, hy + 13, 12, hy + 6); c.lineTo(12, hy + 2); c.quadraticCurveTo(4, hy + 9, -6, hy + 2); c.closePath(); c.fill(); c.fillRect(2, hy + 1.5, 9, 2); }
+  c.restore();
+};
+
+/* ---------- supers ---------- */
+const superState = { meter: 0, active: 0, kind: null, bombT: 0 };
+const SUPERS = {
+  John: { name: 'BIG BATCH', desc: 'grows huge and throws super bombs', kind: 'grow' },
+  Rianan: { name: 'ALL HANDS', desc: 'crew fires twice as fast and heals', kind: 'field' },
+  Aaron: { name: 'PACKET STORM', desc: 'a spray of darts at everything', kind: 'burst' },
+  Bret: { name: 'RACK QUAKE', desc: 'slams the floor, stuns everything', kind: 'quake' },
+  'Brian S': { name: 'FULL OVERRIDE', desc: 'lances every machine in sight', kind: 'burst' },
+  'Brian W': { name: 'QUERY CASCADE', desc: 'chain lightning through everything', kind: 'burst' },
+  Umesh: { name: 'HANDSHAKE SWARM', desc: 'a swarm of homing envelopes', kind: 'burst' },
+  Dave: { name: 'GREEN SCREEN WALL', desc: 'a wall of phosphor lines', kind: 'burst' },
+  Greg: { name: 'DRONE SQUADRON', desc: 'six drones for ten seconds', kind: 'drones' },
+  Ryan: { name: 'BLADE STORM', desc: 'blades double and spin wide', kind: 'blades' },
+  Jose: { name: 'TURRET LINE', desc: 'drops three turrets', kind: 'turrets' },
+  Ash: { name: 'APEX STORM', desc: 'a bolt on every machine', kind: 'burst' },
+};
+function superOf(ch) { return SUPERS[ch.name] || SUPERS.Aaron; }
+function superReady() { return superState.meter >= 100 && superState.active <= 0 && story.weaponsOnline; }
+function useSuper() {
+  if (!superReady()) return false;
+  const s = superOf(hero); superState.meter = 0; superState.kind = s.kind; sfx('boss'); shake = Math.max(shake, 0.35);
+  banner(hero.name.toUpperCase() + '  ·  ' + s.name, 2.5); spawn({ k: 'flash', x: player.x, y: player.y - 30, life: 0.5, t: 0, c: weaponOf(hero).color });
+  const p = shooterPos(player); const w = weaponOf(hero);
+  if (s.kind === 'grow') { superState.active = 9; player.big = 1.6; player.hp = Math.min(player.maxHp + 2, player.hp + 2); superState.bombT = 0; }
+  else if (s.kind === 'field') { superState.active = 8; for (const m of crewAll()) { m.buff = 8; } player.hp = player.maxHp; for (let k = 0; k < 40; k++) spawn({ k: 'spark', x: p.x + rnd(-120, 120), y: p.y + rnd(-60, 60), vx: rnd(-60, 60), vy: rnd(-140, -20), life: 0.9, t: 0, c: [242, 181, 68] }); summons.push({ k: 'rally', x: player.x, y: player.y, r: 10, R: 420, t: 0, life: 2.2, c: [242, 181, 68] }); }
+  else if (s.kind === 'quake') { superState.active = 0.5; forEnemiesNear(p.x, p.y, 700, e => { if (Math.abs(e.x - p.x) < 700) { e.lastShooter = hero.name; shooterName = hero.name; damageEnemy(e, 14, p.x); e.stun = Math.max(e.stun, 2.5); e.vy = -300; } }); summons.push({ k: 'slam', x: player.x, y: player.y, R: 700, t: 0, life: 0.9, c: [245, 245, 255] }); shake = 0.7; }
+  else if (s.kind === 'drones') { superState.active = 10; player.drones = []; for (let k = 0; k < 6; k++) player.drones.push({ a: k / 6 * Math.PI * 2, cd: k * 0.1 }); }
+  else if (s.kind === 'blades') { superState.active = 8; player.bladeBoost = 8; }
+  else if (s.kind === 'turrets') { superState.active = 0.5; for (let k = -1; k <= 1; k++) { const tx = player.x + k * 90; summons.push({ k: 'turret', x: tx, y: groundYAt(tx), t: 0, life: 12, c: w.color, cd: k * 0.1, w: Object.assign({}, WEAPONS.Jose, { range: 520, dmg: 3 }), mul: 1.5, facing: player.facing, hero }); } }
+  else { // burst: hit everything in sight with the hero's own signature
+    superState.active = 0.6; let n = 0; shooterName = hero.name;
+    forEnemiesNear(p.x, p.y, 640, e => { if (n++ > 40) return; if (!e.targetable && !e.d.boss) e.revealed = 1; e.lastShooter = hero.name; beams.push({ x1: p.x, y1: p.y - 10, x2: e.x, y2: e.y - e.h / 2, t: 0, life: 0.45, c: w.color, bolt: 1 }); damageEnemy(e, w.dmg * 4, p.x); if (w.kind === 'homing') for (let k = 0; k < 2; k++) projs.push({ k: 'homing', x: p.x, y: p.y, vx: rnd(-300, 300), vy: rnd(-400, -100), target: e, spd: 420, dmg: w.dmg * 1.5, t: 0, life: 3, c: w.color, w, hero: hero.name }); if (w.kind === 'dart' || w.kind === 'lines') for (let k = 0; k < 3; k++) fireDart(p.x, p.y, e, w, 1.5, (k - 1) * 0.15); });
+    if (n === 0) superState.meter = 60;
+  }
+  return true;
+}
+function updateSuper(dt) {
+  if (superState.active > 0) {
+    superState.active -= dt;
+    if (superState.kind === 'grow') { superState.bombT -= dt; if (superState.bombT <= 0) { superState.bombT = 0.9; const t = nearestEnemy(player.x, player.y - 40, 520); if (t) { const dx = t.x - player.x, dy = (t.y - 10) - (player.y - 60); const T = 0.8; projs.push({ k: 'lob', x: player.x, y: player.y - 60, vx: dx / T, vy: dy / T - 0.5 * G * T, dmg: 24, aoe: 180, t: 0, life: 3, c: [255, 150, 60], w: WEAPONS.John, hero: 'John', big: 1 }); sfx('dash'); } } }
+    if (superState.active <= 0) { player.big = 1; if (superState.kind === 'drones') player.drones = null; player.bladeBoost = 0; superState.kind = null; }
+  }
+  if (player.bladeBoost > 0) player.bladeBoost -= dt;
+}
+const _killEnemy2 = killEnemy;
+killEnemy = function (e) { _killEnemy2(e); if (superState.active <= 0) superState.meter = Math.min(100, superState.meter + (e.d.boss ? 40 : e.d.beetle ? 20 : 8)); if (superState.meter >= 100 && !superState.told) { superState.told = true; banner('SUPER ready  ·  ' + (touch.used ? 'SUPER button' : 'V'), 3); } };
+function drawSuperHUD() {
+  if (!story.weaponsOnline) return;
+  const x = 14, y = H - 84; ctx.fillStyle = 'rgba(16,26,46,.55)'; rr(ctx, x, y, 120, 8, 4); ctx.fill();
+  const ready = superReady(); ctx.fillStyle = ready ? rgba([242, 181, 68], 0.7 + 0.3 * Math.sin(gameTime * 8)) : rgb(weaponOf(hero).color); rr(ctx, x, y, 120 * clamp(superState.meter / 100, 0, 1), 8, 4); ctx.fill();
+  ctx.font = 'bold 9px system-ui, sans-serif'; ctx.fillStyle = ready ? '#f2b544' : 'rgba(246,236,216,.55)'; ctx.fillText(ready ? superOf(hero).name + '  ·  ' + (touch.used ? 'SUPER' : 'V') : 'SUPER', x + 126, y + 8);
+  if (superState.active > 0 && superState.kind) { ctx.fillStyle = rgba([242, 181, 68], 0.9); ctx.fillText(superOf(hero).name + ' ' + Math.ceil(superState.active) + 's', x, y - 4); }
+}
+
+/* ---------- breakpoints (checkpoints) ---------- */
+const breakpoints = { list: [], hit: new Set() };
+function setupBreakpoints() {
+  breakpoints.list = (WORLD.def.breakpoints || (WORLD.id === 'easton' ? [1140, 2620, 3560] : ['prologue', 'show'].includes(WORLD.id) ? [] : [1060, 2560, 3480])).map(x => ({ x, y: groundYAt(x) }));
+  breakpoints.hit.clear();
+}
+function updateBreakpoints() {
+  for (const b of breakpoints.list) { if (breakpoints.hit.has(b.x)) continue; if (Math.abs(player.x - b.x) < 30 && player.onGround) { breakpoints.hit.add(b.x); CHECKPOINT = { x: b.x, y: b.y }; banner('Breakpoint set', 1.2); sfx('ui'); spawn({ k: 'flash', x: b.x, y: b.y - 40, life: 0.4, t: 0, c: [255, 90, 90] }); } }
+}
+function drawBreakpoints() {
+  for (const b of breakpoints.list) { const on = breakpoints.hit.has(b.x); ctx.save(); ctx.translate(b.x, b.y); ctx.fillStyle = '#2b2f3a'; ctx.fillRect(-3, -52, 6, 52); ctx.fillStyle = on ? '#ff5a5a' : '#3a4048'; ctx.beginPath(); ctx.arc(0, -56, 6, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#243447'; rr(ctx, -22, -78, 44, 14, 4); ctx.fill(); ctx.fillStyle = on ? '#ff8a8a' : 'rgba(246,236,216,.6)'; ctx.font = 'bold 7px monospace'; ctx.textAlign = 'center'; ctx.fillText('BREAKPOINT', 0, -68); ctx.restore(); }
+  ctx.textAlign = 'left';
+}
+
+/* ---------- 1938: richer feed store ---------- */
+function drawHayBale(g, x, y, s) { g.save(); g.translate(x, y); g.scale(s, s); const gr = g.createLinearGradient(0, -28, 0, 0); gr.addColorStop(0, '#e2c777'); gr.addColorStop(1, '#a88a3e'); g.fillStyle = gr; rr(g, -24, -28, 48, 28, 4); g.fill(); g.strokeStyle = 'rgba(80,60,20,.35)'; g.lineWidth = 1; for (let k = -20; k < 24; k += 5) { g.beginPath(); g.moveTo(k, -26); g.lineTo(k + 2, -2); g.stroke(); } g.strokeStyle = '#6a4a2a'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(-14, -28); g.lineTo(-14, 0); g.moveTo(12, -28); g.lineTo(12, 0); g.stroke(); g.restore(); }
+function drawFeedSack(g, x, y) { g.save(); g.translate(x, y); g.fillStyle = '#e8dcc0'; rr(g, -12, -26, 24, 26, 5); g.fill(); g.fillStyle = '#c0392b'; for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) if ((i + j) % 2 === 0) g.fillRect(-9 + i * 6, -22 + j * 6, 6, 6); g.fillStyle = '#5a3a2a'; g.fillRect(-10, -26, 20, 3); g.restore(); }
+function drawWagon(g, x, y) { g.save(); g.translate(x, y); g.fillStyle = '#6a4a2a'; g.fillRect(-60, -46, 120, 26); g.fillStyle = '#4a3020'; g.fillRect(-64, -50, 128, 6); for (const wx of [-40, 40]) { g.fillStyle = '#3a2a1a'; g.beginPath(); g.arc(wx, -10, 16, 0, Math.PI * 2); g.fill(); g.strokeStyle = '#a88a5e'; g.lineWidth = 2; for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI; g.beginPath(); g.moveTo(wx + Math.cos(a) * 14, -10 + Math.sin(a) * 14); g.lineTo(wx - Math.cos(a) * 14, -10 - Math.sin(a) * 14); g.stroke(); } } g.fillStyle = '#5a3a2a'; g.fillRect(60, -40, 40, 4); for (const sx of [-40, -14, 12, 38]) drawFeedSack(g, sx, -46); g.restore(); }
+const _drawProloguePlay = drawProloguePlay;
+drawProloguePlay = function (g) {
+  _drawProloguePlay(g); const gy = WORLD.groundY;
+  // GERMANSVILLE on the sign, hay in the yard, a wagon by the barn, a stack by the porch
+  g.fillStyle = '#e8dcc0'; g.fillRect(310, 262, 400, 40); g.fillStyle = '#3a2a1a'; g.font = 'bold 20px Georgia, serif'; g.textAlign = 'center'; g.fillText('PHILLIPS FEED', 510, 286); g.font = '9px Georgia, serif'; g.fillText('GERMANSVILLE, PA  ·  PURINA CHOWS', 510, 298);
+  drawHayBale(g, 860, gy, 1); drawHayBale(g, 908, gy, 1); drawHayBale(g, 884, gy - 28, 1); drawHayBale(g, 1660, gy, 0.9); drawHayBale(g, 1700, gy, 0.9); drawHayBale(g, 2450, gy, 1.1);
+  drawWagon(g, 1240, gy);
+  for (let i = 0; i < 3; i++) drawFeedSack(g, 250 + i * 26, gy);
+  g.fillStyle = '#7a5a3a'; g.fillRect(1540, gy - 60, 6, 60); g.fillStyle = '#e8dcc0'; g.fillRect(1546, gy - 58, 40, 16); g.fillStyle = '#3a2a1a'; g.font = 'bold 7px Georgia'; g.textAlign = 'center'; g.fillText('MILLERS', 1566, gy - 47); g.fillText('→', 1566, gy - 40); // sign to the Millers
+};
+/* the Founder steps in: the lesson */
+const founderScene = { t: 0, said: false };
+const _setupPrologue = setupPrologue;
+setupPrologue = function () {
+  _setupPrologue();
+  WORLD.location = 'Phillips Feed  ·  Germansville, Pennsylvania  ·  1938';
+  const f = npcs.find(n => n.look && n.look.name === 'The Founder'); if (f) { f.lines = ['"Farmers are counting on that feed. Rain or no rain, it goes today."', '"A store\'s just a building. Showing up is the business."']; f.onTalk = null; }
+  founderScene.t = 0; founderScene.said = false;
+};
+WORLD_DEFS.prologue.setup = setupPrologue;
+const _updatePrologue = updatePrologue;
+updatePrologue = function (dt) {
+  _updatePrologue(dt);
+  if (WORLD.id !== 'prologue' && WORLD.id !== 'past') return;
+  founderScene.t += dt;
+  // the Founder walks out of the store to meet you the first time you carry the sack
+  const f = npcs.find(n => n.look && n.look.name === 'The Founder');
+  if (f && !founderScene.said && player.carry) { founderScene.said = true; f.walkTo = 560; setTimeout(() => {}, 0); }
+  if (f && f.walkTo !== undefined) { const d = f.walkTo - f.x; if (Math.abs(d) > 3) { f.x += Math.sign(d) * 70 * dt; f.facing = Math.sign(d); f.walking = true; } else { f.walking = false; if (!f.spoke) { f.spoke = true; f.facing = player.x < f.x ? -1 : 1; say(f, '"Farmers are counting on that feed. Rain or no rain, it goes today. That\'s the whole business."'); } } }
+};
+
+/* ---------- the past: A+ opens a portal to 1938 — grayscale world, colorized machines ---------- */
+WORLD_DEFS.past = Object.assign({}, WORLD_DEFS.prologue, { id: 'past', name: '1938', location: 'Germansville, PA  ·  1938  ·  something is wrong with the light', sepia: false, mono: true, hour: 14, weather: 0, setup: () => { setObjectives([{ text: 'A+ followed the promise back to 1938. Keep its machines off the feed store.', check: () => false, tip: 'Protect the store and the mare. Your weapon works here — theirs do too.' }]); addNPC({ look: { name: 'The Founder', role: '1938', skin: '#2a2a2a', hair: '#1a1a1a', style: 'cap', shirt: '#2a2a2a', pants: '#1a1a1a', acc: 'none' }, x: 470, y: 424, facing: 1, lines: ['"Machines. In my yard. Well — are you going to do something about it?"'] }); WORLD.horse = { x: 1100, y: 440, t: 0 }; WORLD.horseAccepts = () => {}; story.weaponsOnline = true; } });
+function drawMonoPass() { if (!WORLD.def || !WORLD.def.mono) return; ctx.save(); ctx.globalCompositeOperation = 'saturation'; ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, W, H); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = '#d8d8dc'; ctx.fillRect(0, 0, W, H); ctx.restore(); }
+const portal = { t: 0, x: 0, active: false, dest: null };
+function openPortal(x, dest) { portal.active = true; portal.t = 0; portal.x = x; portal.dest = dest; sfx('boss'); shake = Math.max(shake, 0.3); }
+function updatePortal(dt) { if (!portal.active) return; portal.t += dt; if (portal.t > 3.5 && Math.abs(player.x - portal.x) < 120) { portal.active = false; loadWorld(portal.dest, { x: 300, y: 440 }); restoredBanner.t = 4; restoredBanner.text = '1938  ·  the light is wrong'; } if (portal.t > 30) portal.active = false; }
+function drawPortal() {
+  if (!portal.active) return; const a = clamp(portal.t / 1.2, 0, 1); const x = portal.x, y = groundYAt(portal.x) - 60; // drawn inside the world-space block
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  for (let k = 0; k < 5; k++) { const r = (18 + k * 12) * a; ctx.strokeStyle = rgba(k % 2 ? [120, 255, 140] : [200, 130, 255], (0.6 - k * 0.1) * a); ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(x, y, r * 0.55, r, Math.sin(gameTime * 2 + k) * 0.2, 0, Math.PI * 2); ctx.stroke(); }
+  const g = ctx.createRadialGradient(x, y, 0, x, y, 70 * a); g.addColorStop(0, rgba([255, 255, 255], 0.9 * a)); g.addColorStop(0.4, rgba([200, 130, 255], 0.5 * a)); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y, 40 * a, 70 * a, 0, 0, Math.PI * 2); ctx.fill();
+  for (let k = 0; k < 8; k++) { const an = gameTime * 3 + k * 0.8; ctx.fillStyle = rgba([120, 255, 140], 0.8 * a); ctx.fillRect(x + Math.cos(an) * 50 * a, y + Math.sin(an) * 80 * a, 3, 3); }
+  ctx.restore();
+  ctx.fillStyle = 'rgba(16,26,46,.7)'; rr(ctx, x - 40, y - 100, 80, 18, 5); ctx.fill(); ctx.fillStyle = '#d7b3ff'; ctx.font = 'bold 10px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('1938  →', x, y - 87); ctx.textAlign = 'left';
+}
+
+/* ---------- Blaine cameo (his public words, nothing invented) ---------- */
+const BLAINE = { name: 'Blaine', role: 'Executive Chairman', skin: '#f1c9a5', hair: '#8a8a8a', style: 'short', shirt: '#243447', pants: '#2b2f3a', acc: 'lanyard' };
+function addBlaine(x) { return addNPC({ look: BLAINE, x, y: groundYAt(x), facing: -1, lines: ['Blaine: "My grandfather opened a single feed store in 1938. His goal was to delight our customers and create a great place to work."', 'Blaine: "Show up for the people who count on you. That was the whole promise. Still is."'] }); }
+
+/* ---------- hooks ---------- */
+const _loadWorld2 = loadWorld;
+loadWorld = function (id, spawnAt) { _loadWorld2(id, spawnAt); setupBreakpoints(); portal.active = false; superState.active = 0; player.big = 1; if (story.ending && id === 'easton' && !npcs.some(n => n.look && n.look.name === 'Blaine')) addBlaine(880); };
+const _respawn = respawn;
+respawn = function () { _respawn(); };
 bakeShared();
 player.hero = hero;
 loadWorld('easton');
