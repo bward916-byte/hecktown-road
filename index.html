@@ -1562,6 +1562,39 @@ function updateQuest(dt) {
   if (o.check && o.check()) { if (o.onDone) o.onDone(); quest.idx++; quest.flash = 2; const n = currentObjective(); if (n && n.onStart) n.onStart(); }
 }
 
+/* ---- guide: target arrows + control tips ---- */
+const guide = { t: 0 };
+function K() { const tc = touch.used; return { move: tc ? 'drag the left side of the screen' : '← →  (or A / D)', jump: tc ? 'JUMP button' : 'SPACE', dash: tc ? 'DASH button' : 'SHIFT', use: tc ? 'USE button' : 'E', nip: tc ? 'NIP button' : 'X', swap: tc ? 'tap a portrait' : 'C' }; }
+function tipFor(o) { if (!o || !o.tip) return null; const k = K(); return o.tip.replace(/\{(\w+)\}/g, (m, key) => k[key] || m); }
+function drawGuide() {
+  guide.t += 1 / 60;
+  const o = currentObjective(); if (!o || demo.active) return;
+  const tg = o.target ? o.target() : null;
+  if (tg && tg.x !== undefined) {
+    const sx = tg.x - camera.x, sy = (tg.y === undefined ? groundYAt(tg.x) : tg.y) - camera.y;
+    const bob = Math.sin(guide.t * 5) * 6;
+    if (sx > 30 && sx < W - 30) {
+      // arrow above the target
+      ctx.save(); ctx.translate(sx, sy - 96 + bob);
+      ctx.fillStyle = '#f2b544'; ctx.strokeStyle = '#7a3b2a'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(0, 22); ctx.lineTo(-14, 4); ctx.lineTo(-6, 4); ctx.lineTo(-6, -14); ctx.lineTo(6, -14); ctx.lineTo(6, 4); ctx.lineTo(14, 4); ctx.closePath(); ctx.fill(); ctx.stroke();
+      if (tg.label) { ctx.font = 'bold 11px system-ui, sans-serif'; const tw = ctx.measureText(tg.label).width + 16; ctx.fillStyle = 'rgba(16,26,46,.8)'; rr(ctx, -tw / 2, -36, tw, 18, 5); ctx.fill(); ctx.fillStyle = '#f6ecd8'; ctx.textAlign = 'center'; ctx.fillText(tg.label, 0, -23); }
+      ctx.restore();
+    } else {
+      // edge chevron pointing off-screen
+      const right = sx >= W - 30; const ex = right ? W - 40 : 40; const ey = clamp(sy - 40, 120, H - 120);
+      ctx.save(); ctx.translate(ex, ey); ctx.fillStyle = 'rgba(16,26,46,.75)'; ctx.beginPath(); ctx.arc(0, 0, 22, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#f2b544'; ctx.beginPath(); const d = right ? 1 : -1; ctx.moveTo(d * 12, 0); ctx.lineTo(-d * 6, -10); ctx.lineTo(-d * 6, 10); ctx.closePath(); ctx.fill();
+      if (tg.label) { ctx.font = 'bold 10px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#f6ecd8'; ctx.fillText(tg.label + '  ·  ' + Math.round(Math.abs(tg.x - player.x) / 10) * 10 + 'm', 0, 38); }
+      ctx.restore();
+    }
+  }
+  const tip = tipFor(o);
+  if (tip) { const y = packUI.banner > 0 ? 212 : 186; ctx.font = '12px system-ui, sans-serif'; const tw = ctx.measureText(tip).width + 28; ctx.fillStyle = 'rgba(16,26,46,.72)'; rr(ctx, W / 2 - tw / 2, y - 16, tw, 24, 8); ctx.fill(); ctx.strokeStyle = 'rgba(242,181,68,.45)'; ctx.lineWidth = 1; rr(ctx, W / 2 - tw / 2, y - 16, tw, 24, 8); ctx.stroke(); ctx.fillStyle = '#f6ecd8'; ctx.textAlign = 'center'; ctx.fillText(tip, W / 2, y + 1); }
+  // first steps: animated move arrows beside the hero until they move
+  if (o.moveHint && !o.moved) { if (Math.abs(player.vx) > 40) o.moved = true; const px = player.x - camera.x, py = player.y - camera.y - 30; const w = 0.5 + 0.5 * Math.sin(guide.t * 6); ctx.fillStyle = rgba([242, 181, 68], 0.5 + 0.5 * w); ctx.font = 'bold 22px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('◀', px - 46 - w * 6, py); ctx.fillText('▶', px + 46 + w * 6, py); }
+  ctx.textAlign = 'left';
+}
 /* ---- packages (carry & deliver) ---- */
 const packages = [];
 function spawnPackage(x, y, label) { const p = { x, y, vy: 0, carried: false, label: label || 'KIBBLE' }; packages.push(p); return p; }
@@ -1744,6 +1777,7 @@ function drawCrewHUD() {
   }
   if (crew.length) { ctx.font = '10px system-ui, sans-serif'; ctx.fillStyle = 'rgba(246,236,216,.55)'; ctx.textAlign = 'center'; ctx.fillText('tap a portrait or press C to take point', W / 2, H - 6); }
   if (packUI.banner > 0) { const a = Math.min(1, packUI.banner); ctx.textAlign = 'center'; ctx.font = 'bold 18px Georgia, serif'; ctx.fillStyle = rgba([242, 181, 68], a); ctx.fillText(packUI.bannerText, W / 2, 186); }
+  drawGuide();
   const o = currentObjective(); if (o) { ctx.textAlign = 'left'; ctx.font = 'bold 12px system-ui, sans-serif'; const tw = ctx.measureText(o.text).width; const pulse = quest.flash > 0 ? 0.6 + 0.4 * Math.sin(gameTime * 12) : 1; ctx.fillStyle = 'rgba(16,26,46,.55)'; rr(ctx, 14, 48, tw + 34, 24, 8); ctx.fill(); ctx.fillStyle = rgba([242, 181, 68], pulse); ctx.beginPath(); ctx.arc(28, 60, 4, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#f6ecd8'; ctx.fillText(o.text, 40, 64); }
   if (talk.open) {
     const boxW = Math.min(W - 80, 620), bx = W / 2 - boxW / 2, by = H - 175, bh = talk.options ? 100 : 70;
@@ -1895,13 +1929,13 @@ function setupEaston() {
   let delivered = false; rosa.acceptsPackage = (p) => { delivered = true; say(rosa, 'Rosa: "That\'s the one. Now do me a favor — scan the three tagged pallets. The system keeps throwing errors on them."'); };
   let serverFight = false;
   setObjectives([
-    { text: 'Clock in at the front door', check: () => Math.abs(player.x - 990) < 40 && player.onGround, onDone: () => banner('11:52 PM  ·  the new site goes live at midnight', 3) },
-    { text: 'Grab the package by the pallets and bring it to Rosa at bay 2', check: () => delivered },
-    { text: 'Scan the three tagged pallets on the dock', check: () => scans.every(s => s.done), onDone: () => { banner('Every scan came back STATIC. Something is wrong in the server room.', 4); } },
-    { text: 'Get to the server room (front door)', check: () => Math.abs(player.x - 990) < 50 && player.onGround, onDone: () => { story.weaponsOnline = true; serverFight = true; spawnGroup(990, ['flicker', 'flicker', 'flicker']); banner(weaponOf(hero).name + ' online', 3); shake = 0.3; } },
-    { text: 'Clear the Static', check: () => serverFight && waveState.alive <= 0, onDone: () => { story.turnDone = true; banner('The batch job woke up. Every DC is going dark. Get the team.', 4.5); addEncounter(3050, ['flicker', 'flicker', 'flicker', 'jitter']); addEncounter(3750, ['packet', 'flicker', 'flicker']); } },
-    { text: 'Talk to teammates and form a crew of three', check: () => crew.length >= 1, onDone: () => banner('Crews are three. Swap anyone in at a meet-up.', 3) },
-    { text: 'Drive out from the truck when you\'re ready', check: () => false },
+    { text: 'Clock in at the front door', check: () => Math.abs(player.x - 990) < 40 && player.onGround, moveHint: true, tip: 'Move: {move}   ·   Jump: {jump}   ·   Dash: {dash}', target: () => ({ x: 990, y: 440, label: 'FRONT DOOR' }), onDone: () => banner('11:52 PM  ·  the new site goes live at midnight', 3) },
+    { text: 'Grab the package by the pallets and bring it to Rosa at bay 2', check: () => delivered, tip: 'Pick up and hand over with {use}. The dock has steps by bay 1.', target: () => player.carry ? { x: rosa.x, y: rosa.y, label: 'ROSA · BAY 2' } : { x: pkg.x, y: pkg.y, label: 'PACKAGE' } },
+    { text: 'Scan the three tagged pallets on the dock', check: () => scans.every(s => s.done), tip: 'Stand by a tagged pallet and press {use} to scan', target: () => { const s = scans.find(q => !q.done); return s ? { x: s.x, y: s.y, label: s.sku } : null; }, onDone: () => { banner('Every scan came back STATIC. Something is wrong in the server room.', 4); } },
+    { text: 'Get to the server room (front door)', check: () => Math.abs(player.x - 990) < 50 && player.onGround, target: () => ({ x: 990, y: 440, label: 'SERVER ROOM' }), onDone: () => { story.weaponsOnline = true; serverFight = true; spawnGroup(990, ['flicker', 'flicker', 'flicker']); banner(weaponOf(hero).name + ' online', 3); shake = 0.3; } },
+    { text: 'Clear the Static', check: () => serverFight && waveState.alive <= 0, tip: 'Your weapon aims and fires by itself. You move, jump, and dash — dashing through Static is safe.', target: () => { const e = nearestEnemy(player.x, player.y - 30, 2000); return e ? { x: e.x, y: e.y, label: 'STATIC' } : null; }, onDone: () => { story.turnDone = true; banner('The batch job woke up. Every DC is going dark. Get the team.', 4.5); addEncounter(3050, ['flicker', 'flicker', 'flicker', 'jitter']); addEncounter(3750, ['packet', 'flicker', 'flicker']); } },
+    { text: 'Talk to teammates and form a crew of three', check: () => crew.length >= 1, tip: 'Walk up to a teammate and press {use}. Crews are three; {swap} to take point.', target: () => { let best = null, bd = 1e9; for (const n of npcs) if (n.hero) { const d = Math.abs(n.x - player.x); if (d < bd) { bd = d; best = n; } } return best ? { x: best.x, y: best.y, label: best.hero.name.toUpperCase() } : null; }, onDone: () => banner('Crews are three. Swap anyone in at a meet-up.', 3) },
+    { text: 'Drive out from the truck when you\'re ready', check: () => false, tip: 'The coffee machine by the door refills your signal. Meet more teammates, or press {use} at the truck cab.', target: () => ({ x: WORLD.truckX + 450, y: 440, label: 'THE TRUCK' }) },
   ]);
 }
 
@@ -3057,8 +3091,10 @@ function setupPrologue() {
   WORLD.horseAccepts = () => { fed = true; };
   miller.acceptsPackage = () => { delivered = true; say(miller, 'Mrs. Miller: "You showed up. That\'s the whole thing, isn\'t it."'); };
   setObjectives([
-    { text: '1938  ·  Carry the sack of oats to the mare by the road', check: () => fed, onDone: () => { weather = 2; spawnPackage(1000, 440, 'MILLERS'); banner('It starts to rain.', 2.5); } },
-    { text: 'Take the Millers\' order across the road', check: () => delivered, onDone: () => { story.prologueDone = true; banner('"Show up for the people who count on you."', 4.5); } },
+    { text: '1938  ·  Pick up the sack of oats on the porch', check: () => !!player.carry, moveHint: true, tip: 'Move: {move}   ·   Jump onto the porch: {jump}   ·   Pick up: {use}', target: () => ({ x: sack.x, y: sack.y, label: 'OATS' }) },
+    { text: 'Carry the oats to the mare by the road', check: () => fed, tip: 'Carrying makes your jump shorter. Feed her with {use}', target: () => ({ x: horse.x, y: horse.y, label: 'THE MARE' }), onDone: () => { weather = 2; spawnPackage(1000, 440, 'MILLERS'); banner('It starts to rain.', 2.5); } },
+    { text: 'Grab the Millers\' order from the road', check: () => !!player.carry, tip: 'Rain slows nothing. Try a dash on the road: {dash}', target: () => { const p = packages.find(q => !q.carried); return p ? { x: p.x, y: p.y, label: 'MILLERS\' ORDER' } : null; } },
+    { text: 'Take it to Mrs. Miller across the fence', check: () => delivered, tip: 'Hand it over with {use}', target: () => ({ x: miller.x, y: miller.y, label: 'MRS. MILLER' }), onDone: () => { story.prologueDone = true; banner('"Show up for the people who count on you."', 4.5); } },
     { text: '', check: () => false },
   ]);
 }
