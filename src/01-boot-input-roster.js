@@ -57,11 +57,11 @@ window.addEventListener('blur', () => { for (const k in keys) keys[k] = 0; });
 
 const touch = { stick: null, sx: 0, sy: 0, dx: 0, btn: {} };
 const BTN = [
-  { id: 'jump', x: W - 70, y: H - 70, r: 34, label: 'JUMP' },
-  { id: 'dash', x: W - 150, y: H - 50, r: 28, label: 'DASH' },
-  { id: 'use', x: W - 118, y: H - 118, r: 24, label: 'USE' },
-  { id: 'nip', x: W - 190, y: H - 118, r: 22, label: 'NIP', when: () => typeof catnip !== 'undefined' && catnip.n > 0 },
-  { id: 'sup', x: W - 236, y: H - 60, r: 26, label: 'SUPER', when: () => typeof superReady === 'function' && superReady() },
+  { id: 'jump', x: W - 72, y: H - 76, r: 42, label: 'JUMP' },
+  { id: 'dash', x: W - 168, y: H - 52, r: 34, label: 'DASH' },
+  { id: 'use', x: W - 150, y: H - 142, r: 36, label: 'USE' },
+  { id: 'sup', x: W - 246, y: H - 120, r: 32, label: 'SUPER', when: () => typeof superReady === 'function' && superReady() },
+  { id: 'nip', x: W - 60, y: H - 168, r: 28, label: 'NIP', when: () => typeof catnip !== 'undefined' && catnip.n > 0 },
   { id: 'weather', x: W - 46, y: 46, r: 20, label: 'Q' },
   { id: 'time', x: W - 96, y: 46, r: 20, label: 'T' },
 ];
