@@ -210,7 +210,7 @@ function drawHero(c, ch, x, y, facing, pose, lit) {
   const sq = pose.squash || 1, st = pose.stretch || 1;
   c.save();
   c.translate(x, y);
-  const bigS = pose.big || 1; c.scale(facing * sq * bigS, st * bigS);
+  const bigS = (pose.big || 1) * (ch.kid ? 0.72 : 1); c.scale(facing * sq * bigS, st * bigS);
   if (pose.moving && !pose.air) c.rotate(0.06); // lean into the run
   const legA = pose.air ? 0.35 : Math.sin(run * Math.PI * 2) * (pose.moving ? 0.8 : 0);
   const bob = pose.moving && !pose.air ? Math.abs(Math.sin(run * Math.PI * 2)) * 2 : 0;
@@ -903,12 +903,13 @@ function render() {
   drawAnimals(night);
   drawContainers();
   drawCats();
-  drawBiscuit(ctx, dog, nearestLight(dog.x, dog.y - 14, night));
+  if (!(demo.active && DEMO_SCRIPT[demo.idx] && DEMO_SCRIPT[demo.idx].hideHero)) drawBiscuit(ctx, dog, nearestLight(dog.x, dog.y - 14, night));
   if (dog.grr > 0) { ctx.fillStyle = 'rgba(16,26,46,.7)'; rr(ctx, dog.x - 18, dog.y - 58, 36, 16, 5); ctx.fill(); ctx.fillStyle = '#ff8a5a'; ctx.font = 'bold 9px system-ui'; ctx.textAlign = 'center'; ctx.fillText('grrr', dog.x, dog.y - 46); ctx.textAlign = 'left'; }
   drawBossProjs();
   drawHazards();
   for (const p of parts) if (p.k === 'trail') { ctx.globalAlpha = 0.35 * (1 - p.t / p.life); drawHero(ctx, hero, p.x, p.y, p.f, { t: 0, air: true }, null); ctx.globalAlpha = 1; }
-  if (!forklift.mounted && !(player.inv > 0 && player.inv < 1.15 && Math.floor(gameTime * 20) % 2)) drawHero(ctx, hero, player.x, player.y, player.facing, { t: player.t, run: player.run, moving: player.moving, air: !player.onGround, squash: player.squash, stretch: player.stretch, big: player.big || 1 }, nearestLight(player.x, player.y - 30, night));
+  const hideHero = demo.active && DEMO_SCRIPT[demo.idx] && DEMO_SCRIPT[demo.idx].hideHero;
+  if (!hideHero && !forklift.mounted && !(player.inv > 0 && player.inv < 1.15 && Math.floor(gameTime * 20) % 2)) drawHero(ctx, hero, player.x, player.y, player.facing, { t: player.t, run: player.run, moving: player.moving, air: !player.onGround, squash: player.squash, stretch: player.stretch, big: player.big || 1 }, nearestLight(player.x, player.y - 30, night));
   renderCombatFront(night);
   drawPortal();
   drawStoryFront();
@@ -3171,10 +3172,17 @@ WORLD_DEFS.show.driveTo = 'easton'; WORLD_DEFS.show.driveLabel = 'BACK TO EASTON
 const demo = { active: false, idx: 0, t: 0, caption: '', script: [] };
 function demoCrew(names) { crew.length = 0; for (const n of names) { const ch = ROSTER.find(r => r.name === n); if (!ch || ch === hero) continue; const q = npcs.find(z => z.hero === ch); if (q) npcs.splice(npcs.indexOf(q), 1); crew.push({ hero: ch, x: player.x - 30 - crew.length * 24, y: player.y, vx: 0, vy: 0, w: 22, h: 52, facing: 1, onGround: true, wall: 0, run: 0, t: rnd(0, 5), moving: false, wcd: rnd(0, 0.5), state: 'idle', wander: 0 }); story.met.add(n); } for (const m of crewAll()) SKILL[m.hero.name] = 6; }
 function demoBoss(type) { const d = WORLD.def.door; if (!d) return; stage.active = true; stage.door = d; stage.step = 2; stage.fails = 0; arena.active = true; arena.x0 = d.x0; arena.x1 = d.x1; arena.door = d; const b = spawnBoss(type, d.x1 - 160, groundYAt(d.x1 - 160)); arena.boss = b; if (b) b.tx = clamp(player.x + 320, d.x0 + 60, d.x1 - 60); player.x = d.x0 + 60; player.y = groundYAt(player.x); for (const f of crew) { f.x = player.x - 30; f.y = player.y; } }
+const KID_BLAINE = { name: 'Blaine', role: 'a boy', skin: '#f1c9a5', hair: '#a8632c', style: 'cap', shirt: '#c25a3a', pants: '#2f6f9f', acc: 'none', kid: true };
 const DEMO_SCRIPT = [
-  { world: 'easton', x: 700, hour: 18.6, weather: 0, cap: 'Easton, Pennsylvania. The Executive Chairman stops by the front door with a story about his grandfather.', dur: 9, goals: [{ x: 850, act: 'use', pause: 4 }], setup: () => { story.weaponsOnline = false; for (let i = npcs.length - 1; i >= 0; i--) if (npcs[i].hero) npcs.splice(i, 1); addBlaine(890); } },
-  { world: 'prologue', x: 200, hour: 15.5, weather: 0, cap: '1938. Germansville, Pennsylvania. One feed store, Purina chows, a wagon, and a promise.', dur: 12, goals: [{ x: 360, y: 424, act: 'use' }, { x: () => WORLD.horse.x - 30, act: 'use', pause: 1.2 }, { x: 1000, act: 'use' }, { x: 2260, act: 'use' }] },
-  { world: 'easton', x: 300, hour: 23.9, weather: 0, cap: 'Easton, PA. 11:52 PM. The new site goes live at midnight.', dur: 7, goals: [{ x: 990, pause: 1.5 }], setup: () => { story.weaponsOnline = false; } },
+  { world: 'easton', x: 700, hour: 18.6, weather: 0, cut: 'card', title: 'HECKTOWN ROAD', sub: 'a Phillips Pet adventure', cap: '', dur: 5, setup: () => { story.weaponsOnline = false; } },
+  { world: 'prologue', x: 200, hour: 15.5, weather: 0, cut: 'card', title: '1938', sub: 'Germansville, Pennsylvania', cap: '', dur: 4 },
+  { world: 'prologue', x: 200, hour: 15.5, weather: 0, cap: 'One feed store. Purina chows, a wagon, a mare, and a promise made on a rainy afternoon.', dur: 12, goals: [{ x: 360, y: 424, act: 'use' }, { x: () => WORLD.horse.x - 30, act: 'use', pause: 1.2 }, { x: 1000, act: 'use' }, { x: 2260, act: 'use' }] },
+  { world: 'prologue', x: 200, hour: 16.5, weather: 0, cut: 'card', title: 'SOME YEARS LATER', sub: 'the same yard', cap: '', dur: 4 },
+  { world: 'prologue', x: 560, hour: 16.5, weather: 0, cap: 'A boy named Blaine, his grandfather, and the lesson that became a company.', dur: 15, hideHero: true, goals: [{ wait: 1.5 }, { say: 'founder', text: '"Farmers are counting on that feed, Blaine. Rain or no rain, it goes today."', pause: 4.5 }, { say: 'kid', text: 'Blaine: "Even in the rain, Grandpa?"', pause: 3.5 }, { say: 'founder', text: '"Especially in the rain. Show up for the people who count on you. That\'s the whole business."', pause: 5 }], setup: () => { story.weaponsOnline = false; packages.length = 0; WORLD.location = 'Phillips Feed  ·  Germansville, Pennsylvania  ·  some years later'; for (let i = npcs.length - 1; i >= 0; i--) npcs.splice(i, 1); const f = addNPC({ look: { name: 'The Founder', role: 'Grandpa', skin: '#2a2a2a', hair: '#1a1a1a', style: 'cap', shirt: '#2a2a2a', pants: '#1a1a1a', acc: 'none' }, x: 620, y: 440, facing: -1, lines: [] }); const k = addNPC({ look: KID_BLAINE, x: 570, y: 440, facing: 1, lines: [] }); WORLD.demoFounder = f; WORLD.demoKid = k; } },
+  { world: 'easton', x: 700, hour: 18.6, weather: 0, cut: 'card', title: 'TODAY', sub: 'Easton, Pennsylvania', cap: '', dur: 4 },
+  { world: 'easton', x: 700, hour: 18.6, weather: 0, cap: 'Nearly ninety years later, the grandson runs the company his grandfather started — and still tells the story at the front door.', dur: 9, goals: [{ x: 850, act: 'use', pause: 4 }], setup: () => { story.weaponsOnline = false; for (let i = npcs.length - 1; i >= 0; i--) if (npcs[i].hero) npcs.splice(i, 1); addBlaine(890); } },
+  { world: 'easton', x: 300, hour: 23.9, weather: 0, cut: 'card', title: 'TONIGHT', sub: '11:52 PM  ·  the cutover', cap: '', dur: 4 },
+  { world: 'easton', x: 300, hour: 23.9, weather: 0, cap: 'Easton, PA. 11:52 PM. A new order site goes live at midnight, and the old system, A+, has run this company\'s orders since 1985.', dur: 8, goals: [{ x: 990, pause: 1.5 }], setup: () => { story.weaponsOnline = false; } },
   { world: 'easton', x: 1380, hour: 23.92, weather: 0, cap: 'Carry the order to the dock. Scan the tagged pallets.', dur: 14, goals: [{ x: 1470, y: 412, act: 'use' }, { x: 2090, y: 392, act: 'use', pause: 1.2 }, { x: 1800, y: 392, act: 'use' }, { x: 2000, y: 392, act: 'use' }, { x: 2300, y: 392, act: 'use' }], setup: () => { story.weaponsOnline = false; spawnPackage(1470, 412, 'BAY 2'); addScan(1800, 392, 'SKU 11938'); addScan(2000, 392, 'SKU 20415'); addScan(2300, 392, 'SKU 37471'); const rosa = npcs.find(n => n.look && n.look.name === 'Rosa'); if (rosa) rosa.acceptsPackage = () => say(rosa, 'Rosa: "That\'s the one. Now scan the three tagged pallets."'); } },
   { world: 'easton', x: 950, hour: 23.95, weather: 0, cap: 'Every scan comes back rejected. A+, the forty-year-old system, refuses the cutover — and sends its machines.', dur: 9, goals: [{ fight: 1 }], aplus: 'CUTOVER DENIED. ORDERS WILL SHIP. I WILL SHIP THEM.', setup: () => { spawnGroup(990, ['flicker', 'flicker', 'flicker', 'jitter']); banner(weaponOf(hero).name + ' online', 3); } },
   { world: 'easton', x: 950, hour: 23.96, weather: 0, cut: 'map', cap: 'A+ takes the network. Nine distribution centers go dark, one by one — and it locks your team out at each one.', dur: 9, aplus: 'I HAVE LOCKED THE OTHERS OUT. THEY WERE IN MY WAY.' },
@@ -3199,7 +3207,8 @@ const DEMO_SCRIPT = [
   { world: 'merge', x: 2700, hour: 2.5, weather: 1, cap: 'The Merge: the Central Pet legacy DC. Only Umesh, Ash, Dave or Jose can hurt the Schema Golem.', dur: 9, walk: 0, setup: () => { demoCrew(['Umesh', 'Ash']); demoBoss('golem'); } },
   { world: 'easton', x: 1720, hour: 23.99, weather: 0, cap: 'Easton, 11:59. The Cutover Key opens the home warehouse. Everyone you freed joins, and A+ shows its true form.', dur: 12, aplus: 'I HAVE RUN AT MIDNIGHT EVERY NIGHT SINCE 1985.', walk: 0, setup: () => { demoCrew(['Brian S', 'Jose']); story.cutoverKey = true; WORLD_DEFS.easton.door = EASTON_DOOR; demoBoss('queen'); finale.active = true; finale.everyone.length = 0; for (const n of npcs.slice()) { if (!n.hero) continue; finale.everyone.push({ hero: n.hero, x: 1760 + finale.everyone.length * 40, y: 392, vx: 0, vy: 0, w: 22, h: 52, facing: 1, onGround: true, wall: 0, run: 0, t: rnd(0, 5), moving: false, wcd: rnd(0, 0.8), state: 'idle', wander: 0, extra: true }); npcs.splice(npcs.indexOf(n), 1); } } },
   { world: 'easton', x: 1900, hour: 0.05, weather: 0, cap: 'You do not destroy A+. You finish the cutover with it. GO LIVE — OK.', dur: 10, aplus: 'GO LIVE — OK.   A+ ARCHIVED.   THANK YOU FOR THE ORDERS.', walk: 0, y: 392, setup: () => { startEnding(); ledger.found.add(0); ledger.found.add(1); } },
-  { world: 'show', x: 900, hour: 10, weather: 0, cap: 'HECKTOWN ROAD  ·  press any key or tap to play', dur: 10, to: 1700, setup: () => demoCrew(['Rianan', 'Greg']) },
+  { world: 'show', x: 900, hour: 10, weather: 0, cap: 'The Buying Show. Everyone you brought home. Milo has a permit.', dur: 9, to: 1700, setup: () => demoCrew(['Rianan', 'Greg']) },
+  { world: 'prologue', x: 560, hour: 16.5, weather: 0, cut: 'card', title: 'Show up for the people who count on you.', sub: 'HECKTOWN ROAD  ·  press any key or tap to play', cap: '', dur: 8, small: true },
 ];
 function startDemo() {
   hero = ROSTER[0]; player.hero = hero; crew.length = 0; story.turnDone = true; story.weaponsOnline = true;
@@ -3219,6 +3228,15 @@ function demoNext() {
   if (s.fight) spawnGroup(s.x + 200, s.fight);
   pilotSet(s.goals ? s.goals.map(g => Object.assign({}, g)) : []);
   player.inv = 99; player.hp = 3;
+}
+function drawCardCutscene(sc, t) {
+  const a = clamp(t / 0.8, 0, 1) * (t > sc.dur - 0.8 ? clamp((sc.dur - t) / 0.8, 0, 1) : 1);
+  ctx.fillStyle = 'rgba(8,10,18,' + (0.92 * a) + ')'; ctx.fillRect(0, 0, W, H);
+  ctx.save(); ctx.globalAlpha = a; ctx.textAlign = 'center';
+  ctx.font = (sc.small ? 'italic 26px' : 'bold 46px') + ' Georgia, serif'; ctx.fillStyle = '#f2b544'; ctx.fillText(sc.title, W / 2, H / 2 - 6);
+  ctx.font = 'italic 16px Georgia, serif'; ctx.fillStyle = '#f6ecd8'; ctx.fillText(sc.sub || '', W / 2, H / 2 + 30);
+  ctx.fillStyle = 'rgba(242,181,68,.6)'; ctx.fillRect(W / 2 - 60, H / 2 + 46, 120, 2);
+  ctx.restore(); ctx.textAlign = 'left';
 }
 /* ---- demo autopilot: goal-driven movement, real interactions, combat spacing, boss dodging ---- */
 const pilot = { goals: [], gi: 0, jumpT: 0, dashT: 0, waitT: 0, stuckT: 0, lastX: 0, strafe: 1, strafeT: 0 };
@@ -3266,7 +3284,9 @@ function updateDemo(dt) {
     if (demo.t >= s.dur + 1) demoNext();
     return;
   }
-  if (talk.open) { if (pilot.waitT <= 0) { pilot.waitT = 2.2; } else if (pilot.waitT < 0.05) { if (talk.options) { const o = talk.options[0]; talk.open = false; talk.justClosed = true; if (o.fn) o.fn(); } else { talk.open = false; talk.justClosed = true; } } }
+  const gNow = pilotGoal();
+  if (talk.open && !(gNow && gNow.say)) { if (pilot.waitT <= 0) { pilot.waitT = 2.2; } else if (pilot.waitT < 0.05) { if (talk.options) { const o = talk.options[0]; talk.open = false; talk.justClosed = true; if (o.fn) o.fn(); } else { talk.open = false; talk.justClosed = true; } } }
+  else if (gNow && gNow.say) { const g = gNow; if (!g.started) { g.started = true; const who = g.say === 'kid' ? WORLD.demoKid : WORLD.demoFounder; if (who) { who.facing = g.say === 'kid' ? 1 : -1; say(who, g.text); } pilot.waitT = g.pause || 4; } else if (pilot.waitT <= 0) { talk.open = false; pilot.gi++; } }
   else if (forklift.mounted) {
     const t = nearestEnemy(forklift.x, forklift.y - 20, 500);
     if (t) { const d = t.x - forklift.x; if (Math.abs(d) < 90 && Math.abs(forklift.vx) < 150) { pilot.back = 0.7; } if (pilot.back > 0) { pilot.back -= dt; keys[d > 0 ? 'ArrowLeft' : 'ArrowRight'] = 1; } else keys[d > 0 ? 'ArrowRight' : 'ArrowLeft'] = 1; if (Math.abs(d) < 60 && Math.random() < dt * 2) keys.ShiftLeft = 1; }
@@ -3274,7 +3294,8 @@ function updateDemo(dt) {
   } else {
     const g = pilotGoal();
     if (g) {
-      if (g.wait) { if (pilot.waitT <= 0 && !g.started) { g.started = true; pilot.waitT = g.wait; } else if (g.started && pilot.waitT <= 0) { pilot.gi++; if (s.aplus && /1938/.test(s.aplus) && !portal.active) openPortal(3140, 'past'); } }
+      if (g.say) { if (!g.started) { g.started = true; const who = g.say === 'kid' ? WORLD.demoKid : WORLD.demoFounder; if (who) { who.facing = g.say === 'kid' ? 1 : -1; say(who, g.text); } pilot.waitT = g.pause || 4; } else if (pilot.waitT <= 0) { talk.open = false; pilot.gi++; } }
+      else if (g.wait) { if (pilot.waitT <= 0 && !g.started) { g.started = true; pilot.waitT = g.wait; } else if (g.started && pilot.waitT <= 0) { pilot.gi++; if (s.aplus && /1938/.test(s.aplus) && !portal.active) openPortal(3140, 'past'); } }
       else if (g.fight) { if (!pilotCombat(dt)) pilot.gi++; }
       else {
         const gx = typeof g.x === 'function' ? g.x() : g.x; const gy = typeof g.y === 'function' ? g.y() : g.y;
@@ -3298,6 +3319,8 @@ function updateDemo(dt) {
 function drawDemoHUD() {
   if (!demo.active) return;
   const sc = DEMO_SCRIPT[demo.idx]; const cut = sc && sc.cut === 'map'; if (cut) { drawMapCutscene(demo.t); drawAplus(); }
+  if (sc && sc.cut === 'card') { drawCardCutscene(sc, demo.t); return; }
+  if (!demo.caption) return;
   const cy = cut ? H - 84 : (aplus.cur ? 172 : 86);
   ctx.font = 'italic 15px Georgia, serif'; const words = demo.caption.split(' '); const lines = []; let line = ''; for (const wd of words) { const t = line + wd + ' '; if (ctx.measureText(t).width > 760) { lines.push(line.trim()); line = wd + ' '; } else line = t; } lines.push(line.trim());
   const bh = 14 + lines.length * 20; ctx.fillStyle = 'rgba(16,26,46,.7)'; rr(ctx, W / 2 - 400, cy, 800, bh, 10); ctx.fill();
