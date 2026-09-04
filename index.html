@@ -1999,7 +1999,8 @@ function drawDoors() {
   ctx.textAlign = 'left';
 }
 function drawStageHUD() {
-  if (restoredBanner.t > 0) { restoredBanner.t -= 1 / 60; const a = Math.min(1, restoredBanner.t); ctx.textAlign = 'center'; ctx.font = 'bold 20px Georgia, serif'; const tw = ctx.measureText(restoredBanner.text).width; ctx.fillStyle = 'rgba(16,26,46,.6)'; rr(ctx, W / 2 - tw / 2 - 16, 92, tw + 32, 32, 8); ctx.fill(); ctx.fillStyle = rgba([242, 181, 68], a); ctx.fillText(restoredBanner.text, W / 2, 115); }
+  if (restoredBanner.t > 0 && demo.active) restoredBanner.t -= 1 / 60;
+  else if (restoredBanner.t > 0) { restoredBanner.t -= 1 / 60; const a = Math.min(1, restoredBanner.t); ctx.textAlign = 'center'; ctx.font = 'bold 20px Georgia, serif'; const tw = ctx.measureText(restoredBanner.text).width; ctx.fillStyle = 'rgba(16,26,46,.6)'; rr(ctx, W / 2 - tw / 2 - 16, 92, tw + 32, 32, 8); ctx.fill(); ctx.fillStyle = rgba([242, 181, 68], a); ctx.fillText(restoredBanner.text, W / 2, 115); }
   if (stage.active) {
     const s = stageStepsOf(WORLD.def)[stage.step];
     ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(16,26,46,.6)'; rr(ctx, W / 2 - 160, 132, 320, 30, 8); ctx.fill();
@@ -3229,9 +3230,9 @@ function updateDemo(dt) {
 }
 function drawDemoHUD() {
   if (!demo.active) return;
-  ctx.fillStyle = 'rgba(16,26,46,.7)'; rr(ctx, W / 2 - 400, H - 150, 800, 44, 10); ctx.fill();
-  ctx.textAlign = 'center'; ctx.font = 'italic 15px Georgia, serif'; ctx.fillStyle = '#f6ecd8'; ctx.fillText(demo.caption, W / 2, H - 122); ctx.textAlign = 'right';
-  ctx.font = 'bold 11px system-ui, sans-serif'; ctx.fillStyle = 'rgba(242,181,68,.9)'; ctx.fillText('DEMO ' + (demo.idx + 1) + '/' + DEMO_SCRIPT.length + '  ·  any key to play', W - 22, 112); ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(16,26,46,.7)'; rr(ctx, W / 2 - 400, 86, 800, 40, 10); ctx.fill();
+  ctx.textAlign = 'center'; ctx.font = 'italic 15px Georgia, serif'; ctx.fillStyle = '#f6ecd8'; ctx.fillText(demo.caption, W / 2, 112); ctx.textAlign = 'right';
+  ctx.font = 'bold 11px system-ui, sans-serif'; ctx.fillStyle = 'rgba(242,181,68,.9)'; ctx.fillText('DEMO ' + (demo.idx + 1) + '/' + DEMO_SCRIPT.length + '  ·  any key to play', W - 22, 74); ctx.textAlign = 'left';
 }
 function demoExit() { if (!demo.active) return; demo.active = false; location.reload(); }
 window.addEventListener('keydown', e => { if (demo.active && !['KeyM'].includes(e.code)) demoExit(); });
