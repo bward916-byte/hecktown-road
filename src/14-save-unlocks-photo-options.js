@@ -10,7 +10,7 @@ const input = { device: 'keyboard', gpName: '' };
 try { const s = localStorage.getItem('hr_binds'); if (s) Object.assign(binds, JSON.parse(s)); } catch (e) { }
 function saveBinds() { try { localStorage.setItem('hr_binds', JSON.stringify(binds)); } catch (e) { } }
 function pressed(action) { for (const k of binds[action] || []) if (keys[k]) return 1; return 0; }
-function keyLabel(code) { return code.replace('Key', '').replace('Arrow', '').replace('Shift', 'Shift ').replace('Left', 'L').replace('Right', 'R').replace('Space', 'SPACE').replace('Enter', 'ENTER').replace('Escape', 'ESC').replace('Tab', 'TAB').toUpperCase(); }
+function keyLabel(code) { const arrows = { ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓' }; if (arrows[code]) return arrows[code]; return code.replace('Key', '').replace('ShiftLeft', 'SHIFT').replace('ShiftRight', 'R-SHIFT').replace('Space', 'SPACE').replace('Enter', 'ENTER').replace('Escape', 'ESC').replace('Tab', 'TAB').toUpperCase(); }
 const GP_LABELS = { jump: 'A', dash: 'X', use: 'Y', swap: 'RB', nip: 'LB', sup: 'LT', left: 'stick / D-pad', right: 'stick / D-pad' };
 // swap in the remappable input reader
 syncInput = function () {
