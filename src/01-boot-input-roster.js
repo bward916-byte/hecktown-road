@@ -158,6 +158,8 @@ function drawHero(c, ch, x, y, facing, pose, lit) {
   c.translate(x, y);
   const bigS = (pose.big || 1) * (ch.kid ? 0.72 : 1); c.scale(facing * sq * bigS, st * bigS);
   if (pose.moving && !pose.air) c.rotate(0.06); // lean into the run
+  if (pose.hurt) c.rotate(-0.25);
+  if (pose.dead) { c.translate(0, -6); c.rotate(-Math.PI / 2 * Math.min(1, pose.dead)); }
   const legA = pose.air ? 0.35 : Math.sin(run * Math.PI * 2) * (pose.moving ? 0.8 : 0);
   const bob = pose.moving && !pose.air ? Math.abs(Math.sin(run * Math.PI * 2)) * 2 : 0;
   const breathe = pose.moving ? 0 : Math.sin(t * 2) * 0.8;
@@ -170,9 +172,14 @@ function drawHero(c, ch, x, y, facing, pose, lit) {
   for (const s of [-1, 1]) {
     c.save();
     c.translate(s * 5, -legLen);
-    c.rotate(s * legA);
-    c.fillStyle = ch.pants; rr(c, -4, 0, 8, legLen + 2, 4); c.fill(); c.fillStyle = 'rgba(0,0,0,.18)'; rr(c, 0, 0, 4, legLen + 2, 3); c.fill();
-    c.fillStyle = '#151820'; rr(c, -5, legLen - 3, 11, 6, 3); c.fill(); c.fillStyle = 'rgba(255,255,255,.12)'; c.fillRect(-4, legLen - 2, 8, 1.5); // shoe
+    const swing = s * legA; c.rotate(swing);
+    // thigh
+    c.fillStyle = ch.pants; rr(c, -4, 0, 8, legLen * 0.55 + 2, 4); c.fill(); c.fillStyle = 'rgba(0,0,0,.18)'; rr(c, 0, 0, 4, legLen * 0.55 + 2, 3); c.fill();
+    // knee bends on the back-swing and in the air
+    const bend = pose.air ? 0.9 : Math.max(0, -swing) * 1.4 + (pose.moving ? 0.15 : 0);
+    c.translate(0, legLen * 0.55); c.rotate(bend * (facing > 0 ? 1 : 1));
+    c.fillStyle = ch.pants; rr(c, -3.5, -1, 7, legLen * 0.5 + 2, 3.5); c.fill();
+    c.fillStyle = '#151820'; rr(c, -4.5, legLen * 0.5 - 3, 11, 6, 3); c.fill(); c.fillStyle = 'rgba(255,255,255,.12)'; c.fillRect(-3.5, legLen * 0.5 - 2, 8, 1.5); // shoe
     c.restore();
   }
   // torso
@@ -189,9 +196,12 @@ function drawHero(c, ch, x, y, facing, pose, lit) {
   // arms
   const armA = pose.air ? -0.9 : Math.sin(run * Math.PI * 2 + Math.PI) * (pose.moving ? 0.7 : 0.05);
   for (const s of [-1, 1]) {
-    c.save(); c.translate(s * 10, torsoY + 4); c.rotate(s * armA * (s === 1 ? 1 : -1));
-    c.fillStyle = s > 0 ? shade(ch.shirt, 0.8) : ch.shirt; rr(c, -3, 0, 6, 16, 3); c.fill(); c.strokeStyle = 'rgba(20,16,30,.3)'; c.lineWidth = 1; c.stroke();
-    c.fillStyle = ch.skin; c.beginPath(); c.arc(0, 17, 3.5, 0, Math.PI * 2); c.fill();
+    c.save(); c.translate(s * 10, torsoY + 4); const aSw = s * armA * (s === 1 ? 1 : -1); c.rotate(pose.hurt ? -0.9 : aSw);
+    c.fillStyle = s > 0 ? shade(ch.shirt, 0.8) : ch.shirt; rr(c, -3, 0, 6, 9, 3); c.fill(); c.strokeStyle = 'rgba(20,16,30,.3)'; c.lineWidth = 1; c.stroke();
+    // forearm bends at the elbow while running
+    c.translate(0, 9); c.rotate(pose.moving && !pose.air ? -0.7 : (pose.air ? -0.4 : 0));
+    c.fillStyle = s > 0 ? shade(ch.shirt, 0.8) : ch.shirt; rr(c, -2.6, -1, 5.2, 9, 2.6); c.fill(); c.stroke();
+    c.fillStyle = ch.skin; c.beginPath(); c.arc(0, 9, 3.5, 0, Math.PI * 2); c.fill();
     c.restore();
   }
   if (ch.acc === 'cable') { c.strokeStyle = '#e9c46a'; c.lineWidth = 2; c.beginPath(); c.arc(-12, torsoY + 12, 6, 0, Math.PI * 2); c.stroke(); }
