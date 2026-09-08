@@ -43,6 +43,26 @@
   #hint { margin-top: 10px; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: clamp(10px, 1.8vmin, 13px); color:#8f9db3; }
   #rotate { display:none; position:fixed; inset:0; z-index:20; background:#101a2e; color:#f6ecd8; align-items:center; justify-content:center; text-align:center; font-family: Georgia, serif; font-size: 20px; padding: 24px; }
   @media (orientation: portrait) and (max-width: 900px) { #rotate { display:flex; } }
+
+  #title { overflow-y: auto !important; justify-content: flex-start !important; padding: 10px 0 18px !important; box-sizing: border-box; -webkit-overflow-scrolling: touch; }
+  #title h1 { font-size: clamp(26px, 6vmin, 64px) !important; }
+  #btnRow { gap: 8px !important; margin-top: 6px !important; }
+  #btnRow button { padding: 7px 14px !important; font-size: 12px !important; }
+  @media (max-height: 520px) {
+    #title { padding: 6px 0 12px !important; }
+    #title h1 { font-size: clamp(22px, 5vmin, 40px) !important; margin-top: 0 !important; }
+    #title .promise, #disclaimer, #hint { display: none !important; }
+    #truckRow { height: 36px !important; }
+    #truckRow canvas { height: 36px !important; }
+    #grid { padding: 4px 8px !important; }
+    .card { width: clamp(70px, 11.5vmin, 96px) !important; padding: 6px 4px !important; }
+    .card .bio { display: none !important; }
+    .card .r { font-size: 8px !important; }
+    #kidRow { margin-top: 2px !important; }
+    #kid { width: 46px !important; height: 40px !important; }
+    #kidSay { font-size: 11px !important; padding: 5px 9px !important; max-width: 220px !important; }
+    #btnRow button { padding: 6px 12px !important; font-size: 11px !important; letter-spacing: .06em !important; }
+  }
 </style>
 </head>
 <body>
