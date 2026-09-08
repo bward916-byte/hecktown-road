@@ -94,8 +94,8 @@ function loadWorld(id, spawnAt) {
   const def = WORLD_DEFS[id];
   WORLD.id = def.id; WORLD.name = def.name; WORLD.location = def.location; WORLD.width = def.width; WORLD.groundY = def.groundY; WORLD.truckX = def.truckX; WORLD.def = def;
   SOLIDS = def.solids(); LIGHTS = def.lights(); COFFEE = def.coffee; CHECKPOINT = def.checkpoint;
-  def.far();
-  { const c = mkCanvas(WORLD.width, H), g = c.getContext('2d'); def.play(g); dressGround(g); LAYERS.play = c; }
+  if (typeof layerCache !== 'undefined' && layerCache[id]) { Object.assign(LAYERS, layerCache[id]); }
+  else { def.far(); { const c = mkCanvas(WORLD.width, H), g = c.getContext('2d'); def.play(g); dressGround(g); LAYERS.play = c; } }
   for (const e of enemies) e.dead = true; enemies.length = 0; projs.length = 0; beams.length = 0; summons.length = 0; shards.length = 0;
   waveState.alive = 0; waveState.n = 0; waveState.toSpawn = 0; waveState.cd = 3; waveState.paused = true; waveState.rifts.length = 0; waveState.banner = 0;
   arena.active = false; arena.boss = null; stage.active = false; stage.door = null;
