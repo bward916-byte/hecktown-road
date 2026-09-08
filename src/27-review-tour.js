@@ -1,0 +1,24 @@
+
+/* =====================================================================
+   REVIEW TOUR (M25) — every world, every area, captioned
+   ===================================================================== */
+const TOUR_WORLDS = ['prologue', 'easton', 'taunton', 'spartanburg', 'plantcity', 'lansing', 'billings', 'portland', 'sacramento', 'aurora', 'merge', 'past', 'show'];
+const AREA_NAMES = (id, x) => { const d = WORLD_DEFS[id]; if (d.canalX && x >= d.canalX) return 'Lehigh Canal'; if (d.backX && x >= d.backX) { const o = x - d.backX; return o < 1300 ? 'trailer drop yard' : o < 1600 ? 'rail siding' : o < 1880 ? 'dumpsters' : o < 2160 ? 'Fleet Maintenance' : o < 2420 ? 'Tina\'s Tacos' : o < 2520 ? 'water tower' : 'dog park'; } if (d.lotX && x >= d.lotX) { const o = x - d.lotX; return o < 250 ? 'gate & guard shack' : o < 1700 ? 'employee parking' : 'picnic area' + (id === 'easton' ? ' & koi pond' : ''); } if (id === 'prologue' || id === 'past') return x < 800 ? 'Phillips Feed, 1938' : x < 1400 ? 'the road & the mare' : 'the Millers\' farm'; if (id === 'show') return x < 900 ? 'entrance' : 'the floor'; if (id === 'merge') return x < 1200 ? 'Central Pet delegation' : x < 2700 ? 'the yard' : 'the legacy building'; return x < 1100 ? 'front of house' : x < 1700 ? 'office' : x < 2450 ? 'dock' : x < 3300 ? 'boss stage' : 'the hill'; };
+function tourCaption(id, x0, x1) { const names = []; for (const n of npcs) if (n.x >= x0 && n.x <= x1) names.push(n.hero ? n.hero.name : n.look.name); const props = quickProps.filter(q => q.x >= x0 && q.x <= x1).map(q => q.kind); const bits = []; if (names.length) bits.push(names.slice(0, 6).join(', ')); if (props.length) bits.push(props.join(', ')); if (lockout.active && lockout.x >= x0 && lockout.x <= x1) bits.push('lockout'); if (WORLD.def.door && WORLD.def.door.x >= x0 && WORLD.def.door.x <= x1) bits.push('stage door'); if (WORLD.truckX > 0 && WORLD.truckX + 300 >= x0 && WORLD.truckX + 300 <= x1) bits.push('the truck'); if (officeDog.present && officeDog.x >= x0 && officeDog.x <= x1) bits.push('office dog'); if (chuck.present && chuck.x >= x0 && chuck.x <= x1) bits.push('Chuck'); return WORLD.name + '  ·  ' + AREA_NAMES(id, (x0 + x1) / 2) + (bits.length ? '  —  ' + bits.join('  ·  ') : ''); }
+function buildTour() {
+  const out = []; for (const id of TOUR_WORLDS) { const def = WORLD_DEFS[id]; const width = def.width; const hours = { prologue: 15.5, easton: 17.5, taunton: 6.5, spartanburg: 15, plantcity: 19.6, lansing: 8.5, billings: 16.5, portland: 11, sacramento: 18.9, aurora: 5.4, merge: 2.5, past: 14, show: 10 }; for (let x = 0; x < width - W / 2; x += 860) out.push({ world: id, x: Math.min(x + W / 2, width - W / 2), hour: hours[id] || 12, weather: def.weather || 0, cap: '', dur: 5, pan: 860, hideHero: true, tour: true }); }
+  return out;
+}
+const savedScript = DEMO_SCRIPT.slice();
+function startTour() {
+  const tour = buildTour(); DEMO_SCRIPT.length = 0; for (const s of tour) DEMO_SCRIPT.push(s);
+  demo.tour = true; startDemo();
+}
+const _startDemo = startDemo; startDemo = function () { if (!demo.tour && DEMO_SCRIPT.length !== savedScript.length) { DEMO_SCRIPT.length = 0; for (const s of savedScript) DEMO_SCRIPT.push(s); } _startDemo(); if (!demo.tour) demo.tour = false; };
+const _demoExit = demoExit; demoExit = function () { demo.tour = false; _demoExit(); };
+const _demoNext = demoNext;
+demoNext = function () { _demoNext(); const s = DEMO_SCRIPT[demo.idx]; if (s && s.tour) { for (const r of ROSTER) story.met.add(r.name); if (WORLD.id !== s.world) { } for (let i = enemies.length - 1; i >= 0; i--) enemies.splice(i, 1); waveState.alive = 0; encounters.length = 0; if (WORLD.id === s.world && WORLD.def.lotX && !npcs.some(n => n.look && n.look.name === 'Lou')) addBackNpcs(); demo.caption = tourCaption(s.world, s.x - W / 2, s.x + W / 2 + (s.pan || 0)); } };
+const _updateDemo = updateDemo;
+updateDemo = function (dt) { if (!demo.active) return; const s = DEMO_SCRIPT[demo.idx]; if (s && s.tour) { demo.t += dt; const p = clamp(demo.t / s.dur, 0, 1); const cx = s.x + p * (s.pan || 0); player.x = cx; player.y = groundYAt(cx); player.vx = 0; player.inv = 99; player.hp = 3; for (const k in keys) keys[k] = 0; if (demo.t >= s.dur) demoNext(); return; } _updateDemo(dt); };
+// title link
+(function () { const db = document.getElementById('demoBtn'); if (!db || !db.parentNode || !db.parentNode.appendChild) return; const a = document.createElement('button'); a.textContent = 'REVIEW TOUR · every area'; a.setAttribute('style', 'margin:0;padding:8px 14px;font:bold 11px system-ui,-apple-system,sans-serif;letter-spacing:.1em;color:#b9c5d6;background:transparent;border:1px solid rgba(185,197,214,.35);border-radius:8px;cursor:pointer;'); a.addEventListener('click', () => startTour()); db.parentNode.appendChild(a); })();
