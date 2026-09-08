@@ -56,7 +56,7 @@ function drawDC(g, o) {
   drawTrailer(g, WORLD.truckX, 288, WORLD.groundY);
   g.fillStyle = '#2c3038'; g.fillRect(120, 380, 4, 60); g.fillStyle = '#1e6e3a'; rr(g, 40, 364, 164, 30, 4); g.fill(); g.fillStyle = '#fff'; g.font = 'bold 12px system-ui, sans-serif'; g.textAlign = 'center'; g.fillText(o.road, 122, 384);
 }
-const DC_SOLIDS = () => [[0, 440, 4300, 200, 0], [1720, 392, 600, 48, 0], [1680, 416, 40, 24, 0], [3540, 288, 420, 92, 0], [3960, 328, 64, 54, 0], [3600, 410, 80, 30, 0], [3680, 380, 80, 60, 0], [3760, 350, 120, 90, 0]];
+const DC_SOLIDS = () => [[0, 440, 4300, 200, 0], [1720, 392, 600, 48, 0], [1680, 416, 40, 24, 0], [3540, 288, 420, 92, 0], [3960, 328, 64, 54, 0], [3600, 410, 80, 30, 1], [3680, 380, 80, 60, 1], [3760, 350, 120, 90, 1]];
 const DC_LIGHTS = () => [{ x: 1370, y: 290, r: 260, color: [242, 181, 68], night: 1, glow: 1 }, { x: 1380, y: 380, r: 190, color: [255, 225, 170], night: 1 }, { x: 1592, y: 258, r: 160, color: [255, 200, 120], night: 1, cone: 1 }, { x: 1810, y: 330, r: 240, color: [255, 200, 120], night: 1, cone: 1 }, { x: 2130, y: 330, r: 240, color: [255, 200, 120], night: 1, cone: 1 }, { x: 3540 + 448, y: 380, r: 90, color: [255, 240, 200], night: 1 }];
 
 /* ---------- regional dressing ---------- */
