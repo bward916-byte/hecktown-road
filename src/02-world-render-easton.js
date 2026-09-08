@@ -254,15 +254,24 @@ function drawTrailer(g, x, y, gy) {
   for (const wx of [x + 72, x + 118]) { g.fillStyle = '#1b1d22'; g.beginPath(); g.arc(wx, wy, 20, 0, Math.PI * 2); g.fill(); g.fillStyle = '#6a6d75'; g.beginPath(); g.arc(wx, wy, 9, 0, Math.PI * 2); g.fill(); }
   // rear roll-up door
   g.fillStyle = '#e0dcd2'; g.fillRect(x + 2, y + 6, 10, 80); g.fillStyle = 'rgba(0,0,0,.15)'; for (let k = 0; k < 8; k++) g.fillRect(x + 2, y + 8 + k * 10, 10, 1);
-  // cab
+  // cab: a proper tractor — long hood, tall cab with a sleeper, twin stacks, mirrors, bumper
   const cx = x + 420;
-  g.fillStyle = '#c0392b'; rr(g, cx, y + 40, 64, 52, 6); g.fill(); rr(g, cx + 20, y + 4, 44, 44, 6); g.fill();
-  g.fillStyle = '#243447'; rr(g, cx + 30, y + 12, 28, 24, 3); g.fill();
-  g.fillStyle = '#2c3038'; g.fillRect(cx + 4, y + 92, 76, wy - (y + 92)); // cab frame down to the axle
-  g.fillStyle = '#1b1d22'; g.beginPath(); g.arc(cx + 24, wy, 20, 0, Math.PI * 2); g.fill(); g.beginPath(); g.arc(cx + 66, wy, 20, 0, Math.PI * 2); g.fill();
-  g.fillStyle = '#6a6d75'; g.beginPath(); g.arc(cx + 24, wy, 9, 0, Math.PI * 2); g.fill(); g.beginPath(); g.arc(cx + 66, wy, 9, 0, Math.PI * 2); g.fill();
-  g.fillStyle = '#fff3c4'; g.fillRect(cx + 58, y + 70, 8, 8);
-  g.fillStyle = '#8d8d95'; g.fillRect(cx + 8, y - 12, 4, 54); // exhaust stack
+  const cg = g.createLinearGradient(0, y - 4, 0, y + 92); cg.addColorStop(0, '#d8473a'); cg.addColorStop(1, '#8e2a20');
+  g.fillStyle = cg; rr(g, cx + 2, y + 34, 96, 58, 8); g.fill(); // hood + lower cab
+  rr(g, cx + 26, y - 4, 60, 48, 8); g.fill(); // cab upper / sleeper
+  g.fillStyle = 'rgba(255,255,255,.10)'; g.fillRect(cx + 4, y + 36, 92, 6);
+  g.fillStyle = '#243447'; rr(g, cx + 34, y + 4, 44, 30, 4); g.fill(); // windshield
+  g.fillStyle = 'rgba(200,220,255,.28)'; g.fillRect(cx + 37, y + 7, 16, 24);
+  g.fillStyle = '#243447'; g.fillRect(cx + 82, y + 8, 6, 20); // side glass
+  g.fillStyle = '#c8c8d0'; g.fillRect(cx + 90, y + 12, 5, 12); g.fillRect(cx + 22, y + 12, 3, 12); // mirrors
+  g.fillStyle = '#9aa0a8'; rr(g, cx + 78, y + 48, 20, 22, 3); g.fill(); g.fillStyle = '#2c3038'; for (let k = 0; k < 4; k++) g.fillRect(cx + 80, y + 51 + k * 5, 16, 2); // grille
+  g.fillStyle = '#c8c8d0'; g.fillRect(cx + 72, y + 74, 30, 8); // bumper
+  g.fillStyle = '#fff3c4'; g.fillRect(cx + 92, y + 62, 6, 8); g.fillStyle = '#ffb020'; g.fillRect(cx + 92, y + 40, 6, 4); // headlight, marker
+  g.fillStyle = '#2c3038'; g.fillRect(cx + 4, y + 92, 96, wy - (y + 92)); // frame down to the axle
+  g.fillStyle = '#1b1d22'; g.beginPath(); g.arc(cx + 24, wy, 22, 0, Math.PI * 2); g.fill(); g.beginPath(); g.arc(cx + 74, wy, 22, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#6a6d75'; g.beginPath(); g.arc(cx + 24, wy, 9, 0, Math.PI * 2); g.fill(); g.beginPath(); g.arc(cx + 74, wy, 9, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#8d8d95'; g.fillRect(cx + 10, y - 22, 5, 60); g.fillRect(cx + 18, y - 16, 5, 54); // twin stacks
+  g.fillStyle = '#c0392b'; g.fillRect(cx + 2, y + 48, 24, 20); g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(cx + 2, y + 66, 24, 3); // fuel tank
 }
 function drawCrate(g, x, y) {
   g.fillStyle = '#b07a3e'; g.fillRect(x, y, 36, 36); g.fillStyle = '#8a5c2c'; g.fillRect(x, y, 36, 4); g.fillRect(x, y + 32, 36, 4); g.fillRect(x, y, 4, 36); g.fillRect(x + 32, y, 4, 36);
