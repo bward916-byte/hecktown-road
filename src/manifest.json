@@ -21,6 +21,7 @@
     "18-depth-pass.js",
     "19-ui-graphics-4.js",
     "20-ui-graphics-5.js",
+    "21-life-pass.js",
     "99-main.js"
   ]
 }
