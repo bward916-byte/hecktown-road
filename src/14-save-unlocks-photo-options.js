@@ -83,7 +83,7 @@ function continueGame() {
 }
 (function titleContinue() {
   const s = loadSaveData(); const db = document.getElementById('demoBtn'); if (!s || !db) return;
-  const b = document.createElement('button'); b.id = 'contBtn'; b.textContent = '▶ CONTINUE  ·  ' + s.hero + '  ·  ' + (WORLD_DEFS[s.world] ? WORLD_DEFS[s.world].name : s.world) + '  ·  ' + Object.keys(s.restored).filter(k => s.restored[k]).length + ' DCs restored';
+  const b = document.createElement('button'); b.id = 'contBtn'; b.textContent = '▶ CONTINUE  ·  ' + s.hero + '  ·  ' + (WORLD_DEFS[s.world] ? WORLD_DEFS[s.world].name.split(',')[0] : s.world) + '  ·  ' + Object.keys(s.restored).filter(k => s.restored[k]).length + '/9';
   b.style.cssText = db.style.cssText; b.className = ''; b.setAttribute('style', 'margin:10px 8px 0 0;padding:8px 22px;font:bold 13px system-ui,-apple-system,sans-serif;letter-spacing:.12em;color:#16223a;background:#f2b544;border:1.5px solid #f2b544;border-radius:8px;cursor:pointer;');
   db.parentNode.insertBefore(b, db); b.addEventListener('click', () => continueGame());
 })();
