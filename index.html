@@ -6022,6 +6022,10 @@ drawHero = function (c, ch, x, y, facing, pose, lit) { const m = crewAll().find(
 /* hooks */
 const _updateAplus13 = updateAplus; updateAplus = function (dt) { _updateAplus13(dt); updateMutter(dt); updateBanter(dt); };
 
+/* ==== 34-grid-back.js ==== */
+/* the coverflow was too subtle on a phone — back to the row of cards */
+(function () { const st = document.createElement('style'); st.textContent = '#flow, #flowArrows, #carousel, #dots { display:none !important; } #grid { display:flex !important; }'; document.head && document.head.appendChild(st); window.removeEventListener && 0; })();
+
 /* ==== 99-main.js ==== */
 bakeShared();
 player.hero = hero;
