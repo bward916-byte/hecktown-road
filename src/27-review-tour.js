@@ -21,4 +21,5 @@ demoNext = function () { _demoNext(); const s = DEMO_SCRIPT[demo.idx]; if (s && 
 const _updateDemo = updateDemo;
 updateDemo = function (dt) { if (!demo.active) return; const s = DEMO_SCRIPT[demo.idx]; if (s && s.tour) { demo.t += dt; const p = clamp(demo.t / s.dur, 0, 1); const cx = s.x + p * (s.pan || 0); player.x = cx; player.y = groundYAt(cx); player.vx = 0; player.inv = 99; player.hp = 3; for (const k in keys) keys[k] = 0; if (demo.t >= s.dur) demoNext(); return; } _updateDemo(dt); };
 // title link
-(function () { const db = document.getElementById('demoBtn'); if (!db || !db.parentNode || !db.parentNode.appendChild) return; const a = document.createElement('button'); a.textContent = 'REVIEW TOUR · every area'; a.setAttribute('style', 'margin:0;padding:8px 14px;font:bold 11px system-ui,-apple-system,sans-serif;letter-spacing:.1em;color:#b9c5d6;background:transparent;border:1px solid rgba(185,197,214,.35);border-radius:8px;cursor:pointer;'); a.addEventListener('click', () => startTour()); db.parentNode.appendChild(a); })();
+// the tour is reachable with ?tour=1 (no button on the title)
+(function () { try { if (/[?&]tour=1/.test(location.search)) setTimeout(startTour, 800); } catch (e) { } })();
